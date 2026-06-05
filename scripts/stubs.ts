@@ -126,11 +126,6 @@ export default defineConfig({
     hookTimeout: 60000,
     pool: "forks",
   },
-  resolve: {
-    alias: {
-      "#": path.resolve(__dirname, "src"),
-    },
-  },
 });
 `;
 
@@ -672,7 +667,7 @@ export const logger = pino({
 
 export const SRC_CORE_REQUEST_CONTEXT_TS = `import { AsyncLocalStorage } from "node:async_hooks";
 import type { Logger } from "pino";
-import { logger as rootLogger } from "../core/logger.js";
+import { logger as rootLogger } from "./logger.js";
 
 type RequestContext = {
   requestId: string;
@@ -1320,4 +1315,9 @@ export const STUB_MANIFEST: Stub[] = [
   { path: "fern/fern.config.json", contents: FERN_CONFIG_JSON },
   { path: "fern/generators.yml", contents: FERN_GENERATORS_YML },
   { path: "fern/openapi.yml", contents: FERN_OPENAPI_YML },
+  { path: "src/api/v1/common/.gitkeep", contents: "" },
+  { path: "src/db/migrations/.gitkeep", contents: "" },
+  { path: "src/types/.gitkeep", contents: "" },
+  { path: "tests/e2e/.gitkeep", contents: "" },
+  { path: "tests/unit/.gitkeep", contents: "" },
 ];

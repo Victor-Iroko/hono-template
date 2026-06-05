@@ -14,9 +14,4 @@ export default defineConfig({
     hookTimeout: 60000,
     pool: "forks",
   },
-  resolve: {
-    alias: {
-      "#": path.resolve(__dirname, "src"),
-    },
-  },
 });

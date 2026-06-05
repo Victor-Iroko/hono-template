@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { Logger } from "pino";
-import { logger as rootLogger } from "../core/logger.js";
+import { logger as rootLogger } from "./logger.js";
 
 type RequestContext = {
   requestId: string;

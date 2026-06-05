@@ -80,7 +80,7 @@ src/
     env.ts                  # Zod-validated env (single source of truth)
     db.ts                   # Drizzle + neon-serverless (or local neon-proxy)
     redis.ts                # Upstash Redis
-    cache.ts                # unstorage-backed cache
+    cache.ts                # Upstash Redis-backed cache
     rate-limiter.ts         # @upstash/ratelimit + globalRatelimit middleware
     logger.ts               # pino (pino-pretty in dev)
     request-context.ts      # AsyncLocalStorage for requestId/correlationId/logger
