@@ -1,299 +1,362 @@
-- Initialize Project
-    - `bun create hono@latest`
-- Setup Linting, formatting, Typechecking, Lint staged, & Precommits
-    - Install dependencies
-        
-        ```jsx
-        bun add -d oxlint oxfmt lint-staged
-        ```
-        
-    - Add scripts to `package.json` — `lint`, `lint:fix`, `format`, `format:fix`
-        
-        ```jsx
-        "lint": "oxlint",
-        "lint:fix": "oxlint --fix",
-        "format": "oxfmt --write",
-        "format:check": "oxfmt --check",
-        "typecheck": "tsc --noEmit",
-        ```
-        
-    - Add lint staged to `package.json`
-        
-        ```jsx
-        "lint-staged": {
-            "*.{ts,tsx}": [
-              "bunx oxlint --fix",
-              "bunx oxfmt --write"
-            ],
-            "*.{js,json,md,yml,yaml}": [
-              "bunx oxfmt --write"
-            ]
-          }
-        ```
-        
-    - Initialize Husky
-        
-        ```jsx
-        bunx husky init
-        ```
-        
-    - Add lint staged to `pre-commit`
-        
-        ```jsx
-        bun x lint-staged
-        ```
-        
-- Create folder structure
-    
-    ```powershell
-    mkdir `
-      src/api/v1, `
-      src/api/v1/common, `
-      src/core, `
-      src/db/migrations, `
-      src/db/models, `
-      src/middleware, `
-      src/types, `
-      src/utils, `
-      tests/unit, `
-      tests/e2e, `
-      .github/workflows
-    ```
-    
-    ```powershell
-    ni -ItemType File -Path @(
-      ".github/workflows/ci.yml"
-      ".env"
-      ".env.example"
-      ".env.test"
-      ".gitignore"
-      "drizzle.config.ts"
-      "TODO.md"
-      "tsconfig.json"
-      "vercel.json"
-      "vitest.config.ts"
-      "package.json"
-      "docker-compose.yml"
-      "docker-compose.act.yml"
-    
-      "src/index.ts"
-      "src/instrument.ts"
-      "src/serve.ts"
-    
-      "src/core/env.ts"
-      "src/core/db.ts"
-      "src/core/error-handlers.ts"
-      "src/core/errors.ts"
-      "src/core/logger.ts"
-      "src/core/rate-limiter.ts"
-      "src/core/redis.ts"
-      "src/core/cache.ts"
-      "src/core/openapi-config.ts"
-    
-      "src/api/v1/router.ts"
-    
-      "src/db/custom-types.ts"
-      "src/db/enums.ts"
-      "src/db/models/index.ts"
-      "src/db/relations.ts"
-      "src/db/seed.ts"
-    
-      "src/middleware/auth-middleware.ts"
-      "src/middleware/request-context.ts"
-    
-      "tests/setup.ts"
-    )
-    ```
-    
-- Configure core dependencies
-    - Environment variable validation
-        - Install dependencies
-            
-            ```jsx
-            bun add zod dotenv
-            ```
-            
-        - Define your schema in `src/core/env.ts` and validate the `process.env`
-        - Import it in `src/serve.ts`
-    - Logging
-        - Install dependencies
-            
-            ```jsx
-            bun add pino
-            ```
-            
-            ```jsx
-            bun add -d pino-pretty
-            ```
-            
-        - Configure your base logger in `src/core/logger.ts` where `pino-pretty` only appears in development scenarios.
-    - Errors
-        - Create your error class and all your error functions in `src/core/errors.ts`
-    - Error Handler
-        - Configure your error handler in `src/core/error-handler` and add it to `src/index.ts`.
-    - Database in `src/core/db.ts`
-    - Redis
-    - Rate limiter
-    - Cache
-
-- Recommend VSCode extensions (`/.vscode/extensions.json`)
-- Setup Any Project settings (`/.vscode/settings.json`)
-
-- Install Dependencies
-    
-    ```powershell
-    bun add @hono/standard-validator hono-openapi @scalar/hono-api-reference drizzle-orm unstorage ofetch postgres
-    ```
-    
-    ```powershell
-    bun add -d  drizzle-kit drizzle-seed concurrently  vitest
-    ```
-    
+# Hono Template — Project Setup Guide
 
 ---
 
-### Middlewares
+## Prerequisites
 
-- `request-context.ts`
-    
-    ```tsx
-    import { logger } from "../core/logger.ts";
-    import { createMiddleware } from "hono/factory";
-    import type { Variables } from "../index.ts";
-    import { routePath } from "hono/route";
-    
-    export const requestLifecycle = createMiddleware<{ Variables: Variables }>(async (c, next) => {
-      const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
-      const correlationId = c.req.header("x-correlation-id") ?? requestId;
-      const childLogger = logger.child({ requestId, correlationId });
-    
-      c.set("requestId", requestId);
-      c.set("correlationId", correlationId);
-    
-      const method = c.req.method;
-      const url = c.req.url;
-      const path = c.req.path;
-      const start = performance.now();
-    
-      childLogger.info({ method, url, path }, "Request started");
-    
-      c.set("logger", childLogger);
-    
-      try {
-        await next();
-      } catch (err) {
-        childLogger.error({ err, method, url, path }, "Unhandled request error");
-        throw err;
-      } finally {
-        const durationMs = performance.now() - start;
-        const status = c.res.status;
-        const route = routePath(c) || path;
-        childLogger.info(
-          {
-            method,
-            url,
-            path,
-            route,
-            status,
-            durationMs: Math.round(durationMs * 100) / 100,
-          },
-          "Request completed",
-        );
-        c.header("x-request-id", requestId);
-        c.header("x-correlation-id", correlationId);
-      }
-    });
-    
-    ```
-    
-- `auth-middleware.ts`
-    
-    ```tsx
-    import { createMiddleware } from "hono/factory";
-    import { unauthorizedError, permissionDeniedError } from "#/core/errors.js";
-    import { verifyToken, type JwtPayload } from "../api/v1/auth/utils.ts";
-    import type { Variables } from "#/index.ts";
-    
-    export function authMiddleware(allowedRoles?: string[]) {
-      return createMiddleware<{ Variables: Variables }>(async (c, next) => {
-        const header = c.req.header("Authorization");
-        if (!header?.startsWith("Bearer "))
-          throw unauthorizedError("Missing or invalid Authorization header");
-    
-        const token = header.slice(7);
-    
-        let payload: JwtPayload;
-        try {
-          payload = await verifyToken(token, "access");
-        } catch {
-          throw unauthorizedError("Invalid or expired token");
-        }
-    
-        if (!payload.is_email_verified)
-          throw permissionDeniedError("Email not verified. Please verify your email first.");
-    
-        if (allowedRoles?.length && !allowedRoles.includes(payload.role))
-          throw permissionDeniedError("Insufficient permissions");
-    
-        c.set("user", payload);
-        await next();
-      });
-    }
-    
-    export const buyer = authMiddleware(["buyer", "seller", "admin"]);
-    export const seller = authMiddleware(["seller", "admin"]);
-    export const admin = authMiddleware(["admin"]);
-    
-    ```
-    
-
-### Services
-
-Configure your third party services in `src/utils` e.g. emai, payments, queues, image uploads, sentry, etc.
-
-### Define your Datamodel and run your migration
-
-- Define your data model and relations in `src/db`
-- Configure `drizzle.config.ts`
-- Generate your sql `db:generate`
-- Add any custom sql
-- Migrate to your database: `db:migrate`
-- Create a seed script: `src/db/seed.ts`
-
-### Auth
-
-Create your auth stuff either in `src/api/v1/auth` or through a framework or provider.
-
-### **Testing**
-
-Configure your vitest.config.ts and tests/setup.ts
+- [Bun](https://bun.sh) v1.2+ (`powershell -c "irm bun.sh/install.ps1 | iex"`)
+- Node.js 20+
+- Docker Desktop (for local DB/Redis)
 
 ---
 
-### **API Design & Documentation**
+## 0. Scaffold Project
 
-- Define your `v1` router in `src/api/v1/router.ts` — mount sub-routers per domain
-- Mount OpenAPI spec at `/openapi.json` and Scalar docs UI at `/docs`
-- Enforce consistent response envelopes: `{ data, meta? }` for success, `{ error }` for failure
-- Add a `/health` endpoint returning service status, version, and DB/Redis connectivity
-
----
-
-### **CI/CD**
-
-- **GitHub Actions** (`/.github/workflows/ci.yml`): lint, format check, type-check, test, build — on push and PRs to `main`/`dev`
-- Add secrets to GitHub: `DATABASE_URL`, `REDIS_URL`, third-party API keys, etc.
-- **Branch rules:** block direct pushes to `main`/`dev`; require CI to pass before merging
+```bash
+bun create hono@latest
+cd <project-name>
+git init
+```
 
 ---
 
-### **Deployment**
+## 1. Code Quality
 
-- Choose hosting:  Vercel, or Cloudflare Workers (if using Hono's CF adapter)
-- Create a production `Dockerfile` (multi-stage build: install → build → slim runtime image)
-- Add `docker-compose.prod.yml` if self-hosting
-- Link repo, add environment variables, trigger initial deploy
-- Set up health check endpoint for the platform's uptime monitoring
-- Configure log draining to Better Stack / Datadog / Logtail in production
+### Linting (oxlint)
+
+```bash
+bun add -d oxlint
+```
+
+Add to `package.json`:
+
+```json
+"lint": "oxlint",
+"lint:fix": "oxlint --fix"
+```
+
+### Formatting (oxfmt)
+
+```bash
+bun add -d oxfmt
+```
+
+Add to `package.json`:
+
+```json
+"format": "oxfmt --write",
+"format:check": "oxfmt --check"
+```
+
+### Type Checking
+
+Add to `package.json`:
+
+```json
+"typecheck": "tsc --noEmit"
+```
+
+### Pre-commit Hooks
+
+```bash
+bunx husky init
+bun add -d lint-staged
+```
+
+Add to `package.json`:
+
+```json
+"lint-staged": {
+  "*.{ts,tsx}": [
+    "bunx oxlint --fix",
+    "bunx oxfmt --write"
+  ],
+  "*.{js,json,md,yml,yaml}": [
+    "bunx oxfmt --write"
+  ]
+}
+```
+
+In `.husky/pre-commit`:
+
+```bash
+bun x lint-staged
+```
 
 ---
+
+## 2. Project Structure
+
+```powershell
+mkdir `
+  src/api/v1, `
+  src/api/v1/common, `
+  src/core, `
+  src/db/migrations, `
+  src/db/models, `
+  src/middleware, `
+  src/types, `
+  src/utils, `
+  tests/unit, `
+  tests/e2e, `
+  .github/workflows
+```
+
+```powershell
+ni -ItemType File -Path @(
+  ".github/workflows/ci.yml"
+  ".env"
+  ".env.example"
+  ".env.test"
+  "drizzle.config.ts"
+  "TODO.md"
+  "vercel.json"
+  "vitest.config.ts"
+  "docker-compose.yml"
+  "docker-compose.act.yml"
+
+  "src/index.ts"
+  "src/instrument.ts"
+  "src/serve.ts"
+
+  "src/core/env.ts"
+  "src/core/db.ts"
+  "src/core/error-handlers.ts"
+  "src/core/errors.ts"
+  "src/core/logger.ts"
+  "src/core/rate-limiter.ts"
+  "src/core/redis.ts"
+  "src/core/cache.ts"
+  "src/core/openapi-config.ts"
+
+  "src/api/v1/router.ts"
+
+  "src/db/custom-types.ts"
+  "src/db/enums.ts"
+  "src/db/models/index.ts"
+  "src/db/relations.ts"
+  "src/db/seed.ts"
+
+  "src/middleware/auth-middleware.ts"
+  "src/middleware/request-context.ts"
+
+  "tests/setup.ts"
+)
+```
+
+---
+
+## 3. Environment Variables
+
+```bash
+bun add zod dotenv
+```
+
+Define your validated schema in `src/core/env.ts` using Zod. Import it in `src/serve.ts`.
+
+Create `.env` (git-ignored), `.env.example`, and `.env.test`.
+
+---
+
+## 4. Editor Setup
+
+`.vscode/extensions.json`:
+
+```json
+{
+  "recommendations": [
+    "oven.bun-vscode",
+    "ms-azuretools.vscode-containers",
+    "cweijan.vscode-database-client2",
+    "cweijan.dbclient-jdbc",
+    "ms-azuretools.vscode-docker",
+    "github.vscode-github-actions",
+    "github.vscode-pull-request-github",
+    "oxc.oxc-vscode",
+    "vitest.explorer"
+  ]
+}
+```
+
+`.vscode/settings.json`:
+
+```json
+{
+  "editor.formatOnSave": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}
+```
+
+---
+
+## 5. Core Infrastructure
+
+### Logging
+
+```bash
+bun add pino
+bun add -d pino-pretty
+```
+
+Configure `src/core/logger.ts`. Use `pino-pretty` only in development.
+
+### Error Handling
+
+Create custom error classes in `src/core/errors.ts`. Wire up the error handler middleware in `src/core/error-handlers.ts` and register it in `src/index.ts`.
+
+### Database
+
+```bash
+bun add drizzle-orm postgres
+bun add -d drizzle-kit
+```
+
+Configure `src/core/db.ts` and `drizzle.config.ts`.
+
+### Redis
+
+Configure `src/core/redis.ts`.
+
+### Rate Limiter
+
+Configure `src/core/rate-limiter.ts`.
+
+### Cache
+
+```bash
+bun add unstorage
+```
+
+Configure `src/core/cache.ts`.
+
+### HTTP Client
+
+```bash
+bun add ofetch
+```
+
+### OpenAPI & API Docs
+
+```bash
+bun add @hono/standard-validator hono-openapi @scalar/hono-api-reference
+```
+
+Configure `src/core/openapi-config.ts`. Mount these endpoints using environment-guarded middleware (dev/test only):
+
+| Endpoint           | Purpose                       |
+|--------------------|-------------------------------|
+| `/openapi.json`    | Raw OpenAPI spec              |
+| `/docs`            | Scalar interactive docs UI    |
+| `/llms.txt`        | LLM-friendly API summary      |
+
+Wrap them behind a check like `if (env.NODE_ENV !== "production")` so they're never exposed in production.
+
+### Fern
+
+Install the [Fern CLI](https://buildwithfern.com) and run `fern init` at the project root to define your API spec. Commit the generated `fern/` directory. Use `fern check` and `fern generate` to validate and publish docs.
+
+```bash
+bunx fern init
+```
+
+---
+
+## 6. Middleware
+
+- **`request-context.ts`** — Injects `requestId`, `correlationId`, and a child logger into each request. Logs start/end with duration and status.
+- **`auth-middleware.ts`** — Validates Bearer JWT, checks email verification and role-based permissions. Exports `buyer`, `seller`, `admin` presets.
+
+---
+
+## 7. Database Schema & Migrations
+
+1. Define your data models in `src/db/models/`.
+2. Set up relations in `src/db/relations.ts`.
+3. Configure `drizzle.config.ts` with your DB URL.
+4. Generate SQL: `db:generate` script.
+5. Add any custom SQL.
+6. Migrate: `db:migrate` script.
+7. Create and run a seed script: `src/db/seed.ts`.
+
+---
+
+## 8. API Design
+
+- Define your `v1` router in `src/api/v1/router.ts` — mount sub-routers per domain.
+- Enforce consistent response envelopes: `{ data, meta? }` for success, `{ error }` for failure.
+- Add a `/health` endpoint returning service status, version, and DB/Redis connectivity.
+
+---
+
+## 9. API Documentation & Project Docs
+
+- Mount OpenAPI spec at `/openapi.json`.
+- Mount Scalar docs UI at `/docs` for interactive API reference.
+- Maintain a `CHANGELOG.md` for notable changes per version.
+- Add `CONTRIBUTING.md` if the project is open to external contributions.
+- Keep the project `README.md` updated with setup, usage, and architecture notes.
+- Optionally configure [TypeDoc](https://typedoc.org/) for generated code docs.
+
+---
+
+## 10. Authentication
+
+Create your auth logic in `src/api/v1/auth/` — JWT signing/verification, password hashing, email verification flows, role-based access.
+
+---
+
+## 11. Testing
+
+```bash
+bun add -d vitest
+```
+
+Configure `vitest.config.ts` and `tests/setup.ts`. Write unit tests in `tests/unit/` and e2e tests in `tests/e2e/`.
+
+---
+
+## 12. CI/CD
+
+`.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run format:check
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run build
+```
+
+Add secrets to GitHub: `DATABASE_URL`, `REDIS_URL`, third-party API keys. Block direct pushes to `main`/`dev`; require CI to pass before merging.
+
+---
+
+## 13. Deployment
+
+### Docker
+
+Create a multi-stage `Dockerfile` (install → build → slim runtime). Add `docker-compose.prod.yml` for self-hosting.
+
+### Serverless
+
+For **Vercel** — configure `vercel.json` and link the repo. For **Cloudflare Workers** — use Hono's CF adapter.
+
+### Operations
+
+- Set up a health check endpoint for uptime monitoring.
+- Configure log draining to Better Stack / Datadog / Logtail in production.
