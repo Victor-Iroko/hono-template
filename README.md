@@ -1,28 +1,14 @@
-# Hono Template
+# hono-setup
 
-Production-ready Hono API template — TypeScript, Drizzle, Redis, Sentry, Better Auth, OpenAPI docs.
+CLI that turns a freshly-scaffolded Hono project into the [hono-template](https://github.com/) — installs dependencies, writes the project structure, configures linting/formatting/pre-commit hooks, and patches `package.json` with the template's scripts.
+
+The script lives at `scripts/setup.ts` and reads its targets from `scripts/stubs.ts`.
 
 ---
 
-## Quick start
+## Install (one-time)
 
-```bash
-# 1. Scaffold a fresh Hono project
-bun create hono@latest my-app
-cd my-app
-
-# 2. Apply the template setup to it
-hono-setup                # full run
-hono-setup --skip-deps    # skip bun add (deps already installed)
-hono-setup --force        # overwrite existing files
-hono-setup --dry-run      # preview changes
-```
-
-`hono-setup` always operates on the current working directory, so `cd` into the target project first. It installs all dependencies, writes the project structure, configures linting/formatting/pre-commit hooks, and patches `package.json` with the template's scripts.
-
-## Install globally (one-time)
-
-The `hono-setup` bin lives in this repo. Wire it into your shell so it's callable from any directory.
+`hono-setup` always operates on the current working directory, so `cd` into the target Hono project first.
 
 ### Windows (PowerShell) — recommended
 
@@ -45,130 +31,65 @@ bun install
 bun link
 ```
 
-After this, `hono-setup` is on your PATH (Bun adds the symlink to `~/.bun/bin`).
+After this, `hono-setup` is on your `PATH` (Bun adds the symlink to `~/.bun/bin`).
 
 > If `bun link` fails on Linux with a permissions error, ensure your user owns `~/.bun/`.
 
-## Prerequisites
+---
 
-- [Bun](https://bun.sh) 1.2+
-- Node.js 20+
-- Docker Desktop (for local Postgres/Redis)
-
-## Scripts
-
-| Script                                               | Purpose                                                       |
-| ---------------------------------------------------- | ------------------------------------------------------------- |
-| `bun run dev`                                        | Start Docker services + dev server (concurrently)             |
-| `bun run dev:docker`                                 | Start Postgres, Redis, neon-proxy, upstash-proxy, cloudflared |
-| `bun run dev:server`                                 | Start the dev server with hot-reload (tsx watch)              |
-| `bun run lint` / `lint:fix`                          | oxlint                                                        |
-| `bun run format` / `format:check`                    | oxfmt                                                         |
-| `bun run typecheck`                                  | `tsc --noEmit`                                                |
-| `bun run test` / `test:watch`                        | vitest                                                        |
-| `bun run build`                                      | `tsc` to `dist/`                                              |
-| `bun run db:generate`                                | Generate SQL migration from schema changes                    |
-| `bun run db:migrate`                                 | Apply pending migrations                                      |
-| `bun run db:push`                                    | Push schema directly (dev only)                               |
-| `bun run db:studio`                                  | Launch Drizzle Studio                                         |
-| `bun run db:seed`                                    | Run `src/db/seed.ts`                                          |
-| `bun run docker:build` / `docker:up` / `docker:down` | Production Docker stack                                       |
-| `bun run setup`                                      | Re-run the template setup (rebuild the project)               |
-
-## Project structure
-
-```
-src/
-  index.ts                  # Main Hono app — middleware, routes, error handling
-  instrument.ts             # Sentry init (imported first)
-  serve.ts                  # @hono/node-server bootstrap
-  serve-local.ts            # Local dev defaults + serve
-  api/v1/router.ts          # v1 API router — mount sub-routers per domain
-  core/
-    env.ts                  # Zod-validated env (single source of truth)
-    db.ts                   # Drizzle + neon-serverless (or local neon-proxy)
-    redis.ts                # Upstash Redis
-    cache.ts                # Upstash Redis-backed cache
-    rate-limiter.ts         # @upstash/ratelimit + globalRatelimit middleware
-    logger.ts               # pino (pino-pretty in dev)
-    request-context.ts      # AsyncLocalStorage for requestId/correlationId/logger
-    errors.ts               # AppError + helpers (badRequest, notFound, …)
-    error-handlers.ts       # onErrorHandler — Sentry, logging, envelope
-    openapi-config.ts       # OpenAPI doc metadata, security, servers
-  middleware/
-    request-context.ts      # requestLifecycle — request id, correlation id, logging
-    auth-middleware.ts      # authMiddleware + buyer / seller / admin guards
-  db/
-    custom-types.ts         # Custom Drizzle column types
-    enums.ts                # pg enums
-    models/index.ts         # Table exports (Drizzle schema root)
-    relations.ts            # Drizzle relations
-    seed.ts                 # drizzle-seed
-  utils/
-    auth.ts                 # Better Auth instance (Drizzle adapter)
-tests/
-  setup.ts                  # Vitest global setup
-.github/workflows/ci.yml    # CI: install → lint → format:check → typecheck → test → build
-Dockerfile                  # Multi-stage: install → build → slim runtime
-docker-compose.yml          # Local: postgres + redis + neon-proxy + upstash-proxy + cloudflared
-docker-compose.prod.yml     # Production: app + postgres + redis
-docker-compose.act.yml      # Local GitHub Actions via `act`
-drizzle.config.ts           # Drizzle Kit config
-vercel.json                 # Vercel deploy config
-.vscode/                    # Recommended extensions + format-on-save settings
-.husky/pre-commit           # `bun x lint-staged`
-```
-
-## Endpoints (dev)
-
-| Path            | Description                         |
-| --------------- | ----------------------------------- |
-| `GET /health`   | Liveness check                      |
-| `GET /openapi`  | Raw OpenAPI spec (non-prod)         |
-| `GET /docs`     | Scalar interactive docs (non-prod)  |
-| `GET /llms.txt` | LLM-friendly API summary (non-prod) |
-| `* /api/auth/*` | Better Auth handler                 |
-
-The `/openapi`, `/docs`, and `/llms.txt` routes are mounted only when `APP_ENV !== "production"` (or when running on Vercel).
-
-## Environment
-
-Validated by Zod in `src/core/env.ts`. See `.env.example` for the full list. At minimum you need:
-
-- `DATABASE_URL` — Postgres connection string
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` — Redis (use the `upstash-proxy` from `docker-compose.yml` locally)
-- `BETTER_AUTH_SECRET` — generate with `openssl rand -base64 32`
-- `BETTER_AUTH_URL` — base URL of the API
-
-## Authentication
-
-Powered by [Better Auth](https://better-auth.com). The instance lives in `src/utils/auth.ts` with a Drizzle adapter. Role-based guards (`buyer` / `seller` / `admin`) live in `src/middleware/auth-middleware.ts`. To wire roles into the `user` table, run:
+## Usage
 
 ```bash
-bunx @better-auth/cli@latest generate
-bunx drizzle-kit push
+# 1. Scaffold a fresh Hono project
+bun create hono@latest my-app
+cd my-app
+
+# 2. Apply the template setup to it
+hono-setup                # full run
+hono-setup --skip-deps    # skip bun add (deps already installed)
+hono-setup --force        # overwrite existing files
+hono-setup --dry-run      # preview changes
 ```
 
-## Deployment
+### Flags
 
-- **Docker**: `bun run docker:build && bun run docker:up`
-- **Vercel**: `vercel.json` is pre-configured; just link the repo
-- **Cloudflare Workers**: swap `@hono/node-server` in `src/serve.ts` for the CF adapter
+| Flag                              | Description                                                            |
+| --------------------------------- | ---------------------------------------------------------------------- |
+| `--force`                         | Overwrite existing files                                               |
+| `--skip-deps`                     | Don't modify or install dependencies                                   |
+| `--skip-install`                  | Write `package.json` but don't run the install                         |
+| `--skip-auth-generate`            | Don't prompt for `better-auth generate`                                |
+| `--strict`                        | Abort on first install failure (old behavior)                          |
+| `--dry-run`                       | Print actions without writing anything                                 |
+| `--package-manager <pm>`          | Use `bun` \| `npm` \| `pnpm` \| `yarn` (default: `bun`)                |
+| `--install-timeout <seconds>`     | Override the 180s install timeout                                      |
+| `-h`, `--help`                    | Show help                                                              |
 
-Set production secrets in `.env.production` (git-ignored) before deploying.
+---
+
+## Prerequisites
+
+- [Bun](https://bun.sh) 1.2+ (or the package manager you pass to `--package-manager`)
+- Node.js 20+
+
+Docker is optional — the script warns but doesn't fail if it's missing.
+
+---
 
 ## See also
 
 - `scripts/setup.ts` — the setup script itself (read it to see exactly what the template installs)
 - `scripts/stubs.ts` — the file contents the setup script writes
-- `TODO.md` — checklist of post-setup tasks
+- `scripts/troubles.ts` — hints for known-failing packages
+
+---
 
 ## Troubleshooting
 
 ### `error: could not find bin metadata file` on Windows
 
-You ran `bun link` from the `hono-template` repo, then tried `hono-setup` from a target project. This is a known Bun bug ([oven-sh/bun#11319](https://github.com/oven-sh/bun/issues/11319), [oven-sh/bun#28771](https://github.com/oven-sh/bun/issues/28771)) that affects `bin` fields pointing to relative `.ts` source files — the bin shim is created but its metadata file isn't, so Bun can't remap the call to the script's real location.
+You ran `bun link` from this repo, then tried `hono-setup` from a target project. This is a known Bun bug ([oven-sh/bun#11319](https://github.com/oven-sh/bun/issues/11319), [oven-sh/bun#28771](https://github.com/oven-sh/bun/issues/28771)) that affects `bin` fields pointing to relative `.ts` source files — the bin shim is created but its metadata file isn't, so Bun can't remap the call to the script's real location.
 
-Fix: use the PowerShell profile function under [Install globally](#install-globally-one-time) instead of `bun link`. Then from the target project run `hono-setup` directly, or `bun <absolute-path-to-scripts\setup.ts>` as a fallback.
+Fix: use the PowerShell profile function under [Install (one-time)](#install-one-time) instead of `bun link`. Then from the target project run `hono-setup` directly, or `bun <absolute-path-to-scripts\setup.ts>` as a fallback.
 
-To clean up the broken state: `bun unlink` in the `hono-template` repo and delete the dangling `node_modules/hono-setup` junction from the target project.
+To clean up the broken state: `bun unlink` in this repo and delete the dangling `node_modules/hono-setup` junction from the target project.
