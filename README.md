@@ -59,8 +59,8 @@ Add to `package.json`:
 ### Pre-commit Hooks
 
 ```bash
+bun add -d husky lint-staged
 bunx husky init
-bun add -d lint-staged
 ```
 
 Add to `package.json`:
@@ -89,6 +89,7 @@ bun x lint-staged
 
 ```powershell
 mkdir `
+  .vscode, `
   src/api/v1, `
   src/api/v1/common, `
   src/core, `
@@ -104,6 +105,8 @@ mkdir `
 
 ```powershell
 ni -ItemType File -Path @(
+  ".vscode/extensions.json"
+  ".vscode/settings.json"
   ".github/workflows/ci.yml"
   ".env"
   ".env.example"
@@ -112,18 +115,23 @@ ni -ItemType File -Path @(
   "TODO.md"
   "vercel.json"
   "vitest.config.ts"
+  "Dockerfile"
+  ".dockerignore"
   "docker-compose.yml"
+  "docker-compose.prod.yml"
   "docker-compose.act.yml"
 
   "src/index.ts"
   "src/instrument.ts"
   "src/serve.ts"
+  "src/serve-local.ts"
 
   "src/core/env.ts"
   "src/core/db.ts"
   "src/core/error-handlers.ts"
   "src/core/errors.ts"
   "src/core/logger.ts"
+  "src/core/request-context.ts"
   "src/core/rate-limiter.ts"
   "src/core/redis.ts"
   "src/core/cache.ts"
@@ -152,9 +160,7 @@ ni -ItemType File -Path @(
 bun add zod dotenv
 ```
 
-Define your validated schema in `src/core/env.ts` using Zod. Import it in `src/serve.ts`.
-
-Create `.env` (git-ignored), `.env.example`, and `.env.test`.
+Define your validated schema in `src/core/env.ts` using Zod. Import it in `src/index.ts`.
 
 ---
 
@@ -183,8 +189,8 @@ Create `.env` (git-ignored), `.env.example`, and `.env.test`.
 ```json
 {
   "editor.formatOnSave": true,
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true
 }
 ```
 
@@ -201,6 +207,10 @@ bun add -d pino-pretty
 
 Configure `src/core/logger.ts`. Use `pino-pretty` only in development.
 
+### Request Context
+
+Configure `src/core/request-context.ts`. Provides `AsyncLocalStorage`-based access to `requestId`, `correlationId`, and a scoped logger through `runWithRequestContext()`, `getLogger()`, `getRequestId()`, and `getCorrelationId()`.
+
 ### Error Handling
 
 Create custom error classes in `src/core/errors.ts`. Wire up the error handler middleware in `src/core/error-handlers.ts` and register it in `src/index.ts`.
@@ -208,9 +218,11 @@ Create custom error classes in `src/core/errors.ts`. Wire up the error handler m
 ### Database
 
 ```bash
-bun add drizzle-orm postgres
+bun add drizzle-orm postgres @neondatabase/serverless
 bun add -d drizzle-kit
 ```
+
+The `@neondatabase/serverless` driver is required when using `drizzle-orm/neon-serverless` (see `src/core/db.ts`). Locally, the included `docker-compose.yml` runs a Neon-compatible HTTP proxy (`neon-proxy`) in front of Postgres, so no Neon account is needed for development.
 
 Configure `src/core/db.ts` and `drizzle.config.ts`.
 
@@ -239,18 +251,18 @@ bun add ofetch
 ### OpenAPI & API Docs
 
 ```bash
-bun add @hono/standard-validator hono-openapi @scalar/hono-api-reference
+bun add @hono/standard-validator hono-openapi @scalar/hono-api-reference @scalar/openapi-to-markdown
 ```
 
 Configure `src/core/openapi-config.ts`. Mount these endpoints using environment-guarded middleware (dev/test only):
 
-| Endpoint           | Purpose                       |
-|--------------------|-------------------------------|
-| `/openapi.json`    | Raw OpenAPI spec              |
-| `/docs`            | Scalar interactive docs UI    |
-| `/llms.txt`        | LLM-friendly API summary      |
+| Endpoint    | Purpose                    |
+| ----------- | -------------------------- |
+| `/openapi`  | Raw OpenAPI spec           |
+| `/docs`     | Scalar interactive docs UI |
+| `/llms.txt` | LLM-friendly API summary   |
 
-Wrap them behind a check like `if (env.NODE_ENV !== "production")` so they're never exposed in production.
+Wrap them behind a check like `if (env.APP_ENV !== "production")` so they're never exposed in production.
 
 ### Fern
 
@@ -260,16 +272,74 @@ Install the [Fern CLI](https://buildwithfern.com) and run `fern init` at the pro
 bunx fern init
 ```
 
+### Sentry / Error Monitoring
+
+```bash
+bun add @sentry/hono
+```
+
+> `@sentry/hono` requires `@sentry/node` as a peer dependency for the `/node` entry (used by `instrument.ts` and the error handler to call `Sentry.init` / `Sentry.captureException`). Install it alongside:
+>
+> ```bash
+> bun add @sentry/node
+> ```
+>
+> In `src/instrument.ts`, import from the platform-specific entry:
+>
+> ```ts
+> import * as Sentry from "@sentry/hono/node";
+> ```
+
+Configure `src/instrument.ts` to initialize Sentry with your DSN, environment, and sample rate. Import it at the top of `src/index.ts` (before the Hono app is created) so startup errors are captured immediately.
+
 ---
 
-## 6. Middleware
+## 6. App Entry Points
+
+### `src/index.ts` — Main Application
+
+This wires together all middleware, routes, error handling, and environment-guarded documentation endpoints.
+
+### `src/serve.ts` — Server Bootstrap
+
+The entry point that starts the HTTP server using `@hono/node-server`.
+
+### `src/serve-local.ts` — Local Development
+
+Sets sensible defaults for local services, then delegates to `serve.ts`.
+
+---
+
+### Running Everything with Concurrently
+
+```bash
+bun add -d concurrently
+```
+
+The following scripts manage the local dev environment:
+
+| Script                | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `bun run dev`         | Starts Docker services + dev server concurrently |
+| `bun run dev:docker`  | Start Postgres, Redis, and proxy containers      |
+| `bun run dev:server`  | Start the dev server with hot-reload (tsx watch) |
+| `bun run db:studio`   | Launch Drizzle Studio for DB inspection          |
+| `bun run db:generate` | Generate SQL migration from schema changes       |
+| `bun run db:migrate`  | Apply pending migrations to the database         |
+| `bun run db:push`     | Push schema directly (dev only)                  |
+
+Run `bun run dev` to bring up everything — Docker containers spin up in the background while the server starts with hot-reload.
+
+---
+
+## 7. Middleware
 
 - **`request-context.ts`** — Injects `requestId`, `correlationId`, and a child logger into each request. Logs start/end with duration and status.
-- **`auth-middleware.ts`** — Validates Bearer JWT, checks email verification and role-based permissions. Exports `buyer`, `seller`, `admin` presets.
+- **`auth-middleware.ts`** — Validates Better Auth session cookie, checks email verification and role-based permissions. Exports `buyer`, `seller`, `admin` presets.
 
 ---
 
-## 7. Database Schema & Migrations
+## 8. Database Schema & Migrations
 
 1. Define your data models in `src/db/models/`.
 2. Set up relations in `src/db/relations.ts`.
@@ -281,7 +351,7 @@ bunx fern init
 
 ---
 
-## 8. API Design
+## 9. API Design
 
 - Define your `v1` router in `src/api/v1/router.ts` — mount sub-routers per domain.
 - Enforce consistent response envelopes: `{ data, meta? }` for success, `{ error }` for failure.
@@ -289,10 +359,12 @@ bunx fern init
 
 ---
 
-## 9. API Documentation & Project Docs
+## 10. API Documentation & Project Docs
 
-- Mount OpenAPI spec at `/openapi.json`.
+- Mount OpenAPI spec at `/openapi`.
 - Mount Scalar docs UI at `/docs` for interactive API reference.
+- Generate `/llms.txt` from your OpenAPI spec for LLM consumption.
+- Set up [Fern](https://buildwithfern.com) for published API docs.
 - Maintain a `CHANGELOG.md` for notable changes per version.
 - Add `CONTRIBUTING.md` if the project is open to external contributions.
 - Keep the project `README.md` updated with setup, usage, and architecture notes.
@@ -300,23 +372,114 @@ bunx fern init
 
 ---
 
-## 10. Authentication
+## 11. Authentication (Better Auth)
 
-Create your auth logic in `src/api/v1/auth/` — JWT signing/verification, password hashing, email verification flows, role-based access.
+This template uses [Better Auth](https://better-auth.com) — a framework-agnostic, TypeScript-first authentication library.
+
+### Install
+
+```bash
+bun add better-auth
+```
+
+### Environment Variables
+
+```env
+BETTER_AUTH_SECRET=<generate with: openssl rand -base64 32>
+BETTER_AUTH_URL=http://localhost:3000
+```
+
+### Auth Instance
+
+Create `src/utils/auth.ts` with the Drizzle adapter:
+
+```ts
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "../core/db.js";
+import env from "../core/env.js";
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: "pg" }),
+  emailAndPassword: { enabled: true },
+  trustedOrigins: [env.BETTER_AUTH_URL],
+});
+```
+
+### Mount Handler
+
+In `src/index.ts`, Better Auth is mounted at `/api/auth/*` with CORS:
+
+```ts
+import { auth } from "./utils/auth.js";
+import { cors } from "hono/cors";
+
+app.use("/api/auth/*", cors({ origin: env.BETTER_AUTH_URL, credentials: true }));
+app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+```
+
+### Auth Middleware
+
+The middleware at `src/middleware/auth-middleware.ts` reads the session cookie via `auth.api.getSession()` and enforces role-based access. It exports three pre-configured guards:
+
+| Guard    | Allowed Roles              |
+| -------- | -------------------------- |
+| `buyer`  | `buyer`, `seller`, `admin` |
+| `seller` | `seller`, `admin`          |
+| `admin`  | `admin`                    |
+
+Usage in routes:
+
+```ts
+import { buyer } from "../middleware/auth-middleware.js";
+router.get("/profile", buyer, handler);
+```
+
+> **Note:** The `role` field is expected on the user record. You can add it via a custom migration or use the [Better Auth `user` table customization](https://better-auth.com/docs/custom-fields).
+
+### Generate Auth Schema
+
+Better Auth needs its tables in your database. Run these CLI commands to generate the schema and apply it:
+
+```bash
+bunx @better-auth/cli@latest generate
+bunx drizzle-kit push
+```
+
+### Client Setup (Frontend)
+
+Install Better Auth on the frontend and create a client:
+
+```ts
+import { createAuthClient } from "better-auth/react";
+export const authClient = createAuthClient();
+```
+
+### API Endpoints
+
+Once mounted, Better Auth provides the following endpoints at `/api/auth/`:
+
+| Method | Path            | Description                  |
+| ------ | --------------- | ---------------------------- |
+| POST   | `/signup/email` | Register with email/password |
+| POST   | `/signin/email` | Sign in with email/password  |
+| GET    | `/session`      | Get current session          |
+| POST   | `/signout`      | Sign out                     |
+| GET    | `/ok`           | Health check                 |
 
 ---
 
-## 11. Testing
+## 12. Testing
 
 ```bash
-bun add -d vitest
+bun add -d vitest drizzle-seed
 ```
 
 Configure `vitest.config.ts` and `tests/setup.ts`. Write unit tests in `tests/unit/` and e2e tests in `tests/e2e/`.
 
 ---
 
-## 12. CI/CD
+## 13. CI/CD
 
 `.github/workflows/ci.yml`:
 
@@ -346,11 +509,19 @@ Add secrets to GitHub: `DATABASE_URL`, `REDIS_URL`, third-party API keys. Block 
 
 ---
 
-## 13. Deployment
+## 14. Deployment
 
 ### Docker
 
-Create a multi-stage `Dockerfile` (install → build → slim runtime). Add `docker-compose.prod.yml` for self-hosting.
+Multi-stage `Dockerfile` (install → build → slim runtime). Production stack via `docker-compose.prod.yml`.
+
+```bash
+bun run docker:build    # build image
+bun run docker:up       # start production stack (app + postgres + redis)
+bun run docker:down     # stop production stack
+```
+
+Set production secrets in `.env.production` (git-ignored) before deploying.
 
 ### Serverless
 
