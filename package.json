@@ -1,5 +1,11 @@
 {
-  "name": "hono",
+  "name": "hono-setup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Apply the hono-template setup to a fresh Hono project",
+  "bin": {
+    "hono-setup": "scripts/setup.ts"
+  },
   "type": "module",
   "scripts": {
     "lint": "oxlint",
@@ -18,7 +24,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "setup": "bun scripts/setup.ts",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "db:seed": "bun run src/db/seed.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.4",

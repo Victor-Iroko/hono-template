@@ -121,7 +121,6 @@ function isPgUniqueViolation(error: unknown): boolean {
   return isObject(error) && error.code === "23505";
 }
 
-// convert to an instance of AppError
 export function normalizeError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
@@ -146,7 +145,6 @@ export function normalizeError(error: unknown): AppError {
   });
 }
 
-// format the error response body
 export function serializeError(error: AppError, requestId?: string) {
   return {
     error: {

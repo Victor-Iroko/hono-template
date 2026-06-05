@@ -22,7 +22,6 @@ export function authMiddleware(allowedRoles?: string[]) {
   });
 }
 
-// example roles
 export const buyer = authMiddleware(["buyer", "seller", "admin"]);
 export const seller = authMiddleware(["seller", "admin"]);
 export const admin = authMiddleware(["admin"]);
