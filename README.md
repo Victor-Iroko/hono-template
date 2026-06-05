@@ -7,39 +7,47 @@ Production-ready Hono API template — TypeScript, Drizzle, Redis, Sentry, Bette
 ## Quick start
 
 ```bash
+# 1. Scaffold a fresh Hono project
 bun create hono@latest my-app
 cd my-app
-bun run setup   # transforms the bare Hono scaffold into this template
-```
 
-`bun run setup` installs all dependencies, writes the project structure, configures linting/formatting/pre-commit hooks, and patches `package.json` with the template's scripts. Re-run with `--force` to overwrite existing files.
-
-## Install globally (one-time)
-
-The `hono-setup` command is exposed via `bun link` from this repo:
-
-```bash
-git clone https://github.com/<you>/hono-template
-cd hono-template
-bun link
-```
-
-After this, `hono-setup` is on your PATH (Bun adds the symlink to `~/.bun/bin`).
-
-### Use it on a new project
-
-```bash
-mkdir my-app && cd my-app
-bun create hono@latest .
+# 2. Apply the template setup to it
 hono-setup                # full run
 hono-setup --skip-deps    # skip bun add (deps already installed)
 hono-setup --force        # overwrite existing files
 hono-setup --dry-run      # preview changes
 ```
 
-The command always operates on the current working directory, so `cd` first.
+`hono-setup` always operates on the current working directory, so `cd` into the target project first. It installs all dependencies, writes the project structure, configures linting/formatting/pre-commit hooks, and patches `package.json` with the template's scripts.
 
-> **Windows note:** `bun link` creates symlinks. If it fails with a permissions error, enable [Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development) or run from an elevated shell.
+## Install globally (one-time)
+
+The `hono-setup` bin lives in this repo. Wire it into your shell so it's callable from any directory.
+
+### Windows (PowerShell) — recommended
+
+Add a function to your PowerShell profile (`$PROFILE`, typically `~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1`):
+
+```powershell
+function hono-setup {
+    & bun "C:\Users\USER\Desktop\Code\projects\hono-template\scripts\setup.ts" @args
+}
+```
+
+Then `. $PROFILE` (or open a new terminal). This is the most reliable approach on Windows because `bun link` has a known bug ([oven-sh/bun#11319](https://github.com/oven-sh/bun/issues/11319)) that breaks bin metadata for packages whose `bin` field points to a relative `.ts` source file.
+
+### macOS / Linux (bun link)
+
+```bash
+git clone https://github.com/<you>/hono-template
+cd hono-template
+bun install
+bun link
+```
+
+After this, `hono-setup` is on your PATH (Bun adds the symlink to `~/.bun/bin`).
+
+> If `bun link` fails on Linux with a permissions error, ensure your user owns `~/.bun/`.
 
 ## Prerequisites
 
@@ -154,3 +162,13 @@ Set production secrets in `.env.production` (git-ignored) before deploying.
 - `scripts/setup.ts` — the setup script itself (read it to see exactly what the template installs)
 - `scripts/stubs.ts` — the file contents the setup script writes
 - `TODO.md` — checklist of post-setup tasks
+
+## Troubleshooting
+
+### `error: could not find bin metadata file` on Windows
+
+You ran `bun link` from the `hono-template` repo, then tried `hono-setup` from a target project. This is a known Bun bug ([oven-sh/bun#11319](https://github.com/oven-sh/bun/issues/11319), [oven-sh/bun#28771](https://github.com/oven-sh/bun/issues/28771)) that affects `bin` fields pointing to relative `.ts` source files — the bin shim is created but its metadata file isn't, so Bun can't remap the call to the script's real location.
+
+Fix: use the PowerShell profile function under [Install globally](#install-globally-one-time) instead of `bun link`. Then from the target project run `hono-setup` directly, or `bun <absolute-path-to-scripts\setup.ts>` as a fallback.
+
+To clean up the broken state: `bun unlink` in the `hono-template` repo and delete the dangling `node_modules/hono-setup` junction from the target project.

@@ -1232,6 +1232,45 @@ export const PACKAGE_JSON_PATCH = {
   },
 };
 
+export const DEPENDENCY_RANGES = {
+  runtime: {
+    "@hono/node-server": "^2.0.4",
+    "@hono/standard-validator": "^0.2.2",
+    "@neondatabase/serverless": "^1.1.0",
+    "@scalar/hono-api-reference": "^0.10.20",
+    "@scalar/openapi-to-markdown": "^0.5.21",
+    "@sentry/hono": "^10.56.0",
+    "@sentry/node": "^10.56.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
+    "better-auth": "^1.6.14",
+    "date-fns": "^4.4.0",
+    dotenv: "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    hono: "^4.12.23",
+    "hono-openapi": "^1.2.0",
+    ofetch: "^1.5.1",
+    pino: "^10.3.1",
+    postgres: "^3.4.9",
+    unstorage: "^1.17.5",
+    zod: "^4.4.3",
+  } as const,
+  dev: {
+    "@types/node": "^20.11.17",
+    concurrently: "^10.0.3",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-seed": "^0.3.1",
+    husky: "^9.1.7",
+    "lint-staged": "^17.0.7",
+    oxfmt: "^0.53.0",
+    oxlint: "^1.68.0",
+    "pino-pretty": "^13.1.3",
+    tsx: "^4.7.1",
+    typescript: "^5.8.3",
+    vitest: "^4.1.8",
+  } as const,
+} as const;
+
 export const DEPENDENCIES = {
   runtime: [
     "@hono/node-server",
