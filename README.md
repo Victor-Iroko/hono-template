@@ -6,34 +6,19 @@ The script lives at `scripts/setup.ts` and reads its targets from `scripts/stubs
 
 ---
 
-## Install (one-time)
+## Install
 
 `hono-setup` always operates on the current working directory, so `cd` into the target Hono project first.
 
-### Windows (PowerShell) — recommended
-
-Add a function to your PowerShell profile (`$PROFILE`, typically `~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1`):
-
-```powershell
-function hono-setup {
-    & bun "C:\Users\USER\Desktop\Code\projects\hono-template\scripts\setup.ts" @args
-}
-```
-
-Then `. $PROFILE` (or open a new terminal). This is the most reliable approach on Windows because `bun link` has a known bug ([oven-sh/bun#11319](https://github.com/oven-sh/bun/issues/11319)) that breaks bin metadata for packages whose `bin` field points to a relative `.ts` source file.
-
-### macOS / Linux (bun link)
-
 ```bash
-git clone https://github.com/<you>/hono-template
-cd hono-template
-bun install
-bun link
+bunx github:Victor-Iroko/hono-template
 ```
 
-After this, `hono-setup` is on your `PATH` (Bun adds the symlink to `~/.bun/bin`).
+Same command on Windows, macOS, and Linux — no profile edit, no `bun link`.
 
-> If `bun link` fails on Linux with a permissions error, ensure your user owns `~/.bun/`.
+- The repo is cloned and cached under Bun's temp directory on first run; subsequent runs are instant.
+- To force a fresh download (e.g. after a template update): `bunx --no-cache github:Victor-Iroko/hono-template`.
+- The repo must be public. For private access, configure git auth (`GIT_TOKEN` env or SSH key) — `bunx github:...` will then use it.
 
 ---
 
@@ -45,10 +30,10 @@ bun create hono@latest my-app
 cd my-app
 
 # 2. Apply the template setup to it
-hono-setup                # full run
-hono-setup --skip-deps    # skip bun add (deps already installed)
-hono-setup --force        # overwrite existing files
-hono-setup --dry-run      # preview changes
+bunx github:Victor-Iroko/hono-template                # full run
+bunx github:Victor-Iroko/hono-template --skip-deps    # skip bun add (deps already installed)
+bunx github:Victor-Iroko/hono-template --force        # overwrite existing files
+bunx github:Victor-Iroko/hono-template --dry-run      # preview changes
 ```
 
 ### Flags
@@ -86,10 +71,14 @@ Docker is optional — the script warns but doesn't fail if it's missing.
 
 ## Troubleshooting
 
-### `error: could not find bin metadata file` on Windows
+### Stale cache / not picking up template updates
 
-You ran `bun link` from this repo, then tried `hono-setup` from a target project. This is a known Bun bug ([oven-sh/bun#11319](https://github.com/oven-sh/bun/issues/11319), [oven-sh/bun#28771](https://github.com/oven-sh/bun/issues/28771)) that affects `bin` fields pointing to relative `.ts` source files — the bin shim is created but its metadata file isn't, so Bun can't remap the call to the script's real location.
+`bunx` caches the cloned repo in a temp directory. To force a fresh download:
 
-Fix: use the PowerShell profile function under [Install (one-time)](#install-one-time) instead of `bun link`. Then from the target project run `hono-setup` directly, or `bun <absolute-path-to-scripts\setup.ts>` as a fallback.
+```bash
+bunx --no-cache github:Victor-Iroko/hono-template
+```
 
-To clean up the broken state: `bun unlink` in this repo and delete the dangling `node_modules/hono-setup` junction from the target project.
+### Private repo
+
+`bunx github:...` requires the repo to be reachable without authentication. For a private repo, configure git auth (`GIT_TOKEN` or SSH) before running the command.
