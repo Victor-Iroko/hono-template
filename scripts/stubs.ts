@@ -361,8 +361,9 @@ serve({ fetch: app.fetch, port }, (info) => {
 `;
 
 export const SRC_SERVE_LOCAL_TS = `process.env.API_BASE_URL ||= "http://localhost:3000";
-process.env.DATABASE_URL ||= "postgresql://postgres:postgres@localhost:5432/mydb";
-process.env.REDIS_URL ||= "redis://localhost:6379";
+process.env.DATABASE_URL ||= "postgresql://postgres:postgres@localhost:5432/myapp";
+process.env.UPSTASH_REDIS_REST_URL ||= "http://localhost:8079";
+process.env.UPSTASH_REDIS_REST_TOKEN ||= "local-dev-token";
 process.env.APP_ENV ||= "development";
 
 await import("./serve.js");
@@ -497,6 +498,8 @@ const baseSchema = z.object({
 
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.string().url(),
+
+  API_BASE_URL: z.string().url(),
 
   SENTRY_DSN: z.string().optional(),
 });
@@ -1232,7 +1235,7 @@ export const PACKAGE_JSON_PATCH = {
   },
 };
 
-export const DEPENDENCY_RANGES = {
+export const FALLBACK_DEPENDENCY_RANGES = {
   runtime: {
     "@hono/node-server": "^2.0.4",
     "@hono/standard-validator": "^0.2.2",
@@ -1296,6 +1299,7 @@ export const DEPENDENCIES = {
   ] as const,
   dev: [
     "@types/node",
+    "@types/bun",
     "concurrently",
     "drizzle-kit",
     "drizzle-seed",

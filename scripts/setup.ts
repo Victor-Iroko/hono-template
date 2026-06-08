@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { DEPENDENCIES, DEPENDENCY_RANGES, PACKAGE_JSON_PATCH, STUB_MANIFEST } from "./stubs.js";
+import { DEPENDENCIES, FALLBACK_DEPENDENCY_RANGES, PACKAGE_JSON_PATCH, STUB_MANIFEST } from "./stubs.js";
 import { KNOWN_TROUBLEMAKERS } from "./troubles.js";
 
 type Flags = {
@@ -283,6 +283,52 @@ function tail(text: string, lines: number): string {
   return arr.slice(-lines).join("\n").trim();
 }
 
+async function fetchLatestVersion(pkg: string, fallback: string): Promise<string> {
+  try {
+    const res = await fetch(`https://registry.npmjs.org/${pkg.replace("/", "%2F")}/latest`, {
+      headers: {
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { version?: string };
+      if (data?.version) {
+        return `^${data.version}`;
+      }
+    }
+  } catch {
+  }
+  return fallback;
+}
+
+async function resolveDependencyRanges() {
+  const runtimeEntries = await Promise.all(
+    Object.entries(FALLBACK_DEPENDENCY_RANGES.runtime).map(async ([pkg, fallback]) => {
+      const version = await fetchLatestVersion(pkg, fallback);
+      return [pkg, version] as const;
+    }),
+  );
+
+  const devEntries = await Promise.all(
+    Object.entries(FALLBACK_DEPENDENCY_RANGES.dev).map(async ([pkg, fallback]) => {
+      const version = await fetchLatestVersion(pkg, fallback);
+      return [pkg, version] as const;
+    }),
+  );
+
+  return {
+    runtime: Object.fromEntries(runtimeEntries) as Record<
+      keyof typeof FALLBACK_DEPENDENCY_RANGES.runtime,
+      string
+    >,
+    dev: Object.fromEntries(devEntries) as Record<
+      keyof typeof FALLBACK_DEPENDENCY_RANGES.dev,
+      string
+    >,
+  };
+}
+
 async function checkPrereqs(pm: PackageManager): Promise<void> {
   console.log(header("Prerequisites"));
 
@@ -453,14 +499,17 @@ type PackageJson = {
   devDependencies?: Record<string, string>;
 };
 
-async function mergeDependencies(flags: Flags): Promise<void> {
+async function mergeDependencies(
+  flags: Flags,
+  dependencyRanges: { runtime: Record<string, string>; dev: Record<string, string> },
+): Promise<void> {
   console.log(header("Merging package.json"));
   const pkgPath = join(CWD, "package.json");
   const raw = await readFile(pkgPath, "utf8");
   const pkg = JSON.parse(raw) as PackageJson;
 
-  pkg.dependencies = { ...pkg.dependencies, ...DEPENDENCY_RANGES.runtime };
-  pkg.devDependencies = { ...pkg.devDependencies, ...DEPENDENCY_RANGES.dev };
+  pkg.dependencies = { ...pkg.dependencies, ...dependencyRanges.runtime };
+  pkg.devDependencies = { ...pkg.devDependencies, ...dependencyRanges.dev };
   pkg.scripts = { ...pkg.scripts, ...PACKAGE_JSON_PATCH.scripts };
   pkg["lint-staged"] = { ...pkg["lint-staged"], ...PACKAGE_JSON_PATCH["lint-staged"] };
 
@@ -608,7 +657,8 @@ async function main(): Promise<void> {
     const { name } = await verifyHonoProject();
     console.log(info(`detected project: ${c(BOLD, name)}`));
 
-    await mergeDependencies(flags);
+    const dependencyRanges = await resolveDependencyRanges();
+    await mergeDependencies(flags, dependencyRanges);
     const { failed } = await installDeps(flags, pm);
     const { wrote, skipped } = await writeStubs(flags);
     await initHusky(flags, pm);
