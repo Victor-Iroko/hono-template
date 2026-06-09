@@ -188,18 +188,6 @@ export const DOCKER_COMPOSE_YML = `services:
       timeout: 5s
       retries: 5
 
-  neon-proxy:
-    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
-    container_name: my-neon-proxy
-    restart: unless-stopped
-    ports:
-      - "4444:4444"
-    environment:
-      PG_CONNECTION_STRING: postgres://postgres:postgres@db:5432/myapp
-    depends_on:
-      db:
-        condition: service_healthy
-
   redis:
     image: redis:7-alpine
     container_name: my-redis
@@ -509,17 +497,12 @@ const env = baseSchema.parse(process.env);
 export default env;
 `;
 
-export const SRC_CORE_DB_TS = `import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
+export const SRC_CORE_DB_TS = `import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { relations } from "../db/relations.js";
 import env from "./env.js";
 
-if (env.APP_ENV === "development" && !process.env.VERCEL) {
-  neonConfig.wsProxy = (host: string, port: string | number) => \`\${host}:\${port}/v2\`;
-  neonConfig.useSecureWebSocket = false;
-}
-
-const client = new Pool({ connectionString: env.DATABASE_URL });
+const client = postgres(env.DATABASE_URL);
 
 export const db = drizzle({ client, schema: relations });
 `;
@@ -1239,7 +1222,6 @@ export const FALLBACK_DEPENDENCY_RANGES = {
   runtime: {
     "@hono/node-server": "^2.0.4",
     "@hono/standard-validator": "^0.2.2",
-    "@neondatabase/serverless": "^1.1.0",
     "@scalar/hono-api-reference": "^0.10.20",
     "@scalar/openapi-to-markdown": "^0.5.21",
     "@sentry/hono": "^10.56.0",
@@ -1278,7 +1260,6 @@ export const DEPENDENCIES = {
   runtime: [
     "@hono/node-server",
     "@hono/standard-validator",
-    "@neondatabase/serverless",
     "@scalar/hono-api-reference",
     "@scalar/openapi-to-markdown",
     "@sentry/hono",
