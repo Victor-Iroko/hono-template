@@ -4,15 +4,24 @@
   "private": true,
   "description": "Apply the hono-template setup to a fresh Hono project",
   "bin": {
-    "hono-setup": "scripts/setup.ts"
+    "hono-setup": "src/index.ts",
+    "create-hono-stack": "src/index.ts"
   },
   "type": "module",
   "scripts": {
-    "setup": "bun scripts/setup.ts",
-    "typecheck": "tsc --noEmit"
+    "start": "bun src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test tests/"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.0",
     "@types/node": "^20.11.17",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.7.0",
+    "commander": "^15.0.0",
+    "picocolors": "^1.1.1"
   }
 }
