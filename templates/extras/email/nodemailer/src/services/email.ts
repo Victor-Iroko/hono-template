@@ -1,5 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import { env } from "../core/env-validation.js";
+import { getEnv } from "../core/env-validation.js";
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -14,6 +14,7 @@ let _transporter: Transporter | undefined;
 export function getTransporter(): Transporter {
   if (_transporter) return _transporter;
 
+  const env = getEnv();
   const smtpConfig = {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
@@ -31,7 +32,7 @@ export function getTransporter(): Transporter {
 
 export const emailService = {
   send: async (options: SendEmailOptions): Promise<{ messageId: string }> => {
-    const defaultFrom = env.EMAIL_FROM;
+    const defaultFrom = getEnv().EMAIL_FROM;
     const info = await getTransporter().sendMail({
       from: options.from || defaultFrom,
       to: Array.isArray(options.to) ? options.to.join(", ") : options.to,

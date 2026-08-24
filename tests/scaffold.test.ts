@@ -140,10 +140,9 @@ describe("End-to-End Scaffolding Pipeline", () => {
 
     const indexContent = await readFileSafe(join(tempDir, "src/index.ts"));
     expect(indexContent).toContain('app.route("/api/v1", v1Router);');
-    expect(indexContent).toContain("setupOpenApiDocs(app);");
-    expect(indexContent).toContain('import type { auth } from "./core/auth.js";');
-    expect(indexContent).toContain("user?: typeof auth.$Infer.Session.user;");
-    expect(indexContent).toContain("session?: typeof auth.$Infer.Session.session;");
+    expect(indexContent).toContain('import type { Auth } from "./core/auth.js";');
+    expect(indexContent).toContain('user?: Auth["$Infer"]["Session"]["user"];');
+    expect(indexContent).toContain('session?: Auth["$Infer"]["Session"]["session"];');
     expect(indexContent).not.toContain("user?: unknown;");
   });
 

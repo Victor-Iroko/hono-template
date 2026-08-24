@@ -1,12 +1,12 @@
 import { createMiddleware } from "hono/factory";
-import { logger } from "../core/logger.js";
+import { getLogger } from "../core/logger.js";
 import { runWithRequestContext } from "../core/request-context.js";
 import type { Variables } from "../index.js";
 
 export const requestLifecycle = createMiddleware<{ Variables: Variables }>(async (c, next) => {
   const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
   const correlationId = c.req.header("x-correlation-id") ?? requestId;
-  const childLogger = logger.child({ requestId, correlationId });
+  const childLogger = getLogger().child({ requestId, correlationId });
 
   c.set("requestId", requestId);
   c.set("correlationId", correlationId);

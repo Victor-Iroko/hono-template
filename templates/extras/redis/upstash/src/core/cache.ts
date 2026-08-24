@@ -1,18 +1,18 @@
-import { redis } from "./redis.js";
+import { getRedis } from "./redis.js";
 
 export const cache = {
   get: async <T>(key: string): Promise<T | null> => {
-    return await redis.get<T>(key);
+    return await getRedis().get<T>(key);
   },
   set: async <T>(key: string, value: T, ttlSeconds?: number): Promise<void> => {
     if (ttlSeconds) {
-      await redis.set(key, value, { ex: ttlSeconds });
+      await getRedis().set(key, value, { ex: ttlSeconds });
     } else {
-      await redis.set(key, value);
+      await getRedis().set(key, value);
     }
   },
   del: async (key: string): Promise<void> => {
-    await redis.del(key);
+    await getRedis().del(key);
   },
   remember: async <T>(
     key: string,

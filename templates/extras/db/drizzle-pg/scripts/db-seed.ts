@@ -1,10 +1,10 @@
 import "dotenv/config";
-import { db, getQueryClient } from "../src/core/db.js";
+import { getDb, getQueryClient } from "../src/core/db.js";
 import { users } from "../src/db/models/index.js";
 
 async function main() {
   console.log("🌱 Seeding database...");
-  await db
+  await getDb()
     .insert(users)
     .values([
       { email: "alice@example.com", name: "Alice Smith" },

@@ -1,8 +1,8 @@
-import { redis } from "./redis.js";
+import { getRedis } from "./redis.js";
 
 export const cache = {
   get: async <T>(key: string): Promise<T | null> => {
-    const data = await redis.get(key);
+    const data = await getRedis().get(key);
     if (!data) return null;
     try {
       return JSON.parse(data) as T;
@@ -13,13 +13,13 @@ export const cache = {
   set: async <T>(key: string, value: T, ttlSeconds?: number): Promise<void> => {
     const serialized = JSON.stringify(value);
     if (ttlSeconds) {
-      await redis.set(key, serialized, "EX", ttlSeconds);
+      await getRedis().set(key, serialized, "EX", ttlSeconds);
     } else {
-      await redis.set(key, serialized);
+      await getRedis().set(key, serialized);
     }
   },
   del: async (key: string): Promise<void> => {
-    await redis.del(key);
+    await getRedis().del(key);
   },
   remember: async <T>(
     key: string,

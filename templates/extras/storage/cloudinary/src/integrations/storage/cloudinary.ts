@@ -6,13 +6,14 @@ import {
   type ResourceType,
   type TransformationOptions,
 } from "cloudinary";
-import { env } from "../../../core/env-validation.js";
+import { getEnv } from "../../../core/env-validation.js";
 
 let _configured = false;
 
 export function getCloudinary(): typeof cloudinary {
   if (_configured) return cloudinary;
 
+  const env = getEnv();
   cloudinary.config({
     cloud_name: env.CLOUDINARY_CLOUD_NAME,
     api_key: env.CLOUDINARY_API_KEY,
@@ -89,6 +90,7 @@ export async function generatePresignedUpload(
   expirationMinutes = 15
 ): Promise<PresignedUploadResponse> {
   getCloudinary();
+  const env = getEnv();
   const timestamp = Math.floor(Date.now() / 1000) + expirationMinutes * 60;
   const publicId = crypto.randomBytes(16).toString("hex");
 

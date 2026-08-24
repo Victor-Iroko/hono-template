@@ -49,7 +49,7 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       ctx.projectDir,
       "src/index.ts",
       "// [INSTALLER:IMPORTS]",
-      'import type { auth } from "./core/auth.js";'
+      'import type { Auth } from "./core/auth.js";'
     );
 
     await replaceMarkerBlock(
@@ -58,8 +58,8 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       "// [INSTALLER:VARIABLES_START]",
       "// [INSTALLER:VARIABLES_END]",
       `export type Variables = RequestContext & {
-  user?: typeof auth.$Infer.Session.user;
-  session?: typeof auth.$Infer.Session.session;
+  user?: Auth["$Infer"]["Session"]["user"];
+  session?: Auth["$Infer"]["Session"]["session"];
 };`
     );
 

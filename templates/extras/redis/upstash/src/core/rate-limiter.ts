@@ -1,19 +1,24 @@
 import type { MiddlewareHandler } from "hono";
 import { Ratelimit } from "@upstash/ratelimit";
-import { redis } from "./redis.js";
+import { getRedis } from "./redis.js";
 import { rateLimitedError } from "./errors.js";
 
-export const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(60, "1 m"),
-  analytics: true,
-  prefix: "@app/ratelimit",
-});
+let _ratelimit: Ratelimit | undefined;
+
+export function getRateLimiter(): Ratelimit {
+  return (
+    _ratelimit ??= new Ratelimit({
+      redis: getRedis(),
+      limiter: Ratelimit.slidingWindow(60, "1 m"),
+      analytics: true,
+      prefix: "@app/ratelimit",
+    })
+  );
+}
 
 export const rateLimiterMiddleware = (customLimiter?: Ratelimit): MiddlewareHandler => {
-  const limiter = customLimiter ?? ratelimit;
-
   return async (c, next) => {
+    const limiter = customLimiter ?? getRateLimiter();
     const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
     const { success, limit, remaining, reset } = await limiter.limit(ip);
 

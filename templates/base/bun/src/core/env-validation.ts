@@ -16,13 +16,3 @@ export function getEnv(): Env {
 }
 
 export const validateEnv = getEnv;
-
-export const env = new Proxy({} as Env, {
-  get: (_, prop: string | symbol) => Reflect.get(getEnv(), prop),
-  has: (_, prop: string | symbol) => Reflect.has(getEnv(), prop),
-  ownKeys: () => Reflect.ownKeys(getEnv()),
-  getOwnPropertyDescriptor: (_, prop: string | symbol) =>
-    Reflect.getOwnPropertyDescriptor(getEnv(), prop),
-});
-
-export default env;

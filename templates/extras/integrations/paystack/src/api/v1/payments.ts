@@ -6,7 +6,8 @@ import {
   verifyWebhookSignature,
 } from "../../integrations/payments/paystack.js";
 import { validationError, unauthorizedError } from "../../core/errors.js";
-import { logger } from "../../core/logger.js";
+import { getLogger } from "../../core/logger.js";
+import type { Variables } from "../../index.js";
 
 const initializeSchema = z.object({
   email: z.email(),
@@ -15,7 +16,7 @@ const initializeSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const paymentsRouter = new Hono();
+export const paymentsRouter = new Hono<{ Variables: Variables }>();
 
 paymentsRouter.post("/initialize", async (c) => {
   const body = await c.req.json().catch(() => null);
@@ -50,13 +51,14 @@ paymentsRouter.post("/webhook", async (c) => {
     throw unauthorizedError("Invalid webhook signature");
   }
 
+  const log = c.get("logger") ?? getLogger();
   const event = JSON.parse(rawBody) as { event: string; data: Record<string, unknown> };
-  logger.info({ event: event.event }, "Received Paystack webhook event");
+  log.info({ event: event.event }, "Received Paystack webhook event");
 
   // Handle event types (e.g. charge.success, transfer.success)
   switch (event.event) {
     case "charge.success":
-      logger.info({ reference: event.data.reference }, "Payment successful");
+      log.info({ reference: event.data.reference }, "Payment successful");
       break;
     default:
       break;

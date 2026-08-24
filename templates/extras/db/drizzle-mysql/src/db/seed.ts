@@ -1,9 +1,9 @@
-import { db, getPool } from "../core/db.js";
+import { getDb, getPool } from "../core/db.js";
 import { users } from "./models/index.js";
 
 async function seed() {
   console.log("🌱 Seeding MySQL database...");
-  await db
+  await getDb()
     .insert(users)
     .values([
       { id: crypto.randomUUID(), email: "alice@example.com", name: "Alice Smith" },

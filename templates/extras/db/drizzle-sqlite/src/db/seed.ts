@@ -1,9 +1,9 @@
-import { db } from "../core/db.js";
+import { getDb } from "../core/db.js";
 import { users } from "./models/index.js";
 
 async function seed() {
   console.log("🌱 Seeding SQLite database...");
-  await db
+  await getDb()
     .insert(users)
     .values([
       { id: crypto.randomUUID(), email: "alice@example.com", name: "Alice Smith" },

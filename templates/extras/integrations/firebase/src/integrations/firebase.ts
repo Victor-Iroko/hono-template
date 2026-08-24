@@ -1,6 +1,6 @@
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
-import { env } from "../core/env-validation.js";
+import { getEnv } from "../core/env-validation.js";
 import { unauthorizedError, internalError } from "../core/errors.js";
 
 export interface FirebaseUser {
@@ -22,6 +22,7 @@ export function getFirebaseAdminApp(): App {
     return firebaseApp;
   }
 
+  const env = getEnv();
   const serviceAccountKey = env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (serviceAccountKey) {
     try {

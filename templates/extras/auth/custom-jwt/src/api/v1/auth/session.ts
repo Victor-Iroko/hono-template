@@ -5,7 +5,7 @@ import {
   signAccessToken,
 } from "./tokens.js";
 import { logSecurityAudit } from "./audit.js";
-import { env } from "../../../core/env-validation.js";
+import { getEnv } from "../../../core/env-validation.js";
 import { unauthorizedError } from "../../../core/errors.js";
 
 // Inferred session type matching Drizzle userSessions schema
@@ -43,8 +43,13 @@ export interface AuthTokens {
   expiresIn: number;
 }
 
-const SESSION_LIFETIME_MS = env.SESSION_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
-const ACCESS_TOKEN_EXPIRE_SECONDS = env.ACCESS_TOKEN_EXPIRE_MINUTES * 60;
+function getSessionLifetimeMs(): number {
+  return getEnv().SESSION_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function getAccessTokenExpireSeconds(): number {
+  return getEnv().ACCESS_TOKEN_EXPIRE_MINUTES * 60;
+}
 
 // In-memory session store (can be seamlessly swapped or augmented with a database/Redis store)
 const sessionStore = new Map<string, UserSession>();
@@ -59,7 +64,7 @@ export async function upsertUserSession(
   const rawRefreshToken = generateOpaqueRefreshToken();
   const refreshTokenHash = hashRefreshToken(rawRefreshToken);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_LIFETIME_MS);
+  const expiresAt = new Date(now.getTime() + getSessionLifetimeMs());
 
   const session: UserSession = {
     id: randomUUID(),
@@ -95,7 +100,7 @@ export async function upsertUserSession(
       accessToken,
       refreshToken: rawRefreshToken,
       sessionId,
-      expiresIn: ACCESS_TOKEN_EXPIRE_SECONDS,
+      expiresIn: getAccessTokenExpireSeconds(),
     },
   };
 }
@@ -154,7 +159,7 @@ export async function rotateUserSession(
 
   session.refreshTokenHash = newRefreshTokenHash;
   session.lastActiveAt = now;
-  session.expiresAt = new Date(now.getTime() + SESSION_LIFETIME_MS);
+  session.expiresAt = new Date(now.getTime() + getSessionLifetimeMs());
   if (meta?.ipAddress) session.ipAddress = meta.ipAddress;
   if (meta?.userAgent) session.userAgent = meta.userAgent;
   if (meta?.deviceName) session.deviceName = meta.deviceName;
@@ -178,7 +183,7 @@ export async function rotateUserSession(
       accessToken,
       refreshToken: newRefreshToken,
       sessionId,
-      expiresIn: ACCESS_TOKEN_EXPIRE_SECONDS,
+      expiresIn: getAccessTokenExpireSeconds(),
     },
   };
 }

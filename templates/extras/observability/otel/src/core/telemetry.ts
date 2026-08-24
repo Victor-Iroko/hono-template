@@ -1,16 +1,22 @@
 import { trace, metrics, type Tracer, type Meter } from "@opentelemetry/api";
-import { env } from "./env-validation.js";
+import { getEnv } from "./env-validation.js";
 
-const SERVICE_NAME = env.OTEL_SERVICE_NAME;
+let _tracer: Tracer | undefined;
+let _meter: Meter | undefined;
 
-export const tracer: Tracer = trace.getTracer(SERVICE_NAME);
-export const meter: Meter = metrics.getMeter(SERVICE_NAME);
+export function getTracer(): Tracer {
+  return (_tracer ??= trace.getTracer(getEnv().OTEL_SERVICE_NAME || "api"));
+}
+
+export function getMeter(): Meter {
+  return (_meter ??= metrics.getMeter(getEnv().OTEL_SERVICE_NAME || "api"));
+}
 
 export async function withSpan<T>(
   name: string,
   fn: () => Promise<T>
 ): Promise<T> {
-  return await tracer.startActiveSpan(name, async (span) => {
+  return await getTracer().startActiveSpan(name, async (span) => {
     try {
       const result = await fn();
       span.end();
@@ -22,3 +28,5 @@ export async function withSpan<T>(
     }
   });
 }
+
+export type { Tracer, Meter };

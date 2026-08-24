@@ -1,10 +1,10 @@
 import { Client } from "@upstash/qstash";
-import { env } from "../core/env-validation.js";
+import { getEnv } from "../core/env-validation.js";
 
 let _client: Client | undefined;
 
 export function getQStash(): Client {
-  return (_client ??= new Client({ token: env.QSTASH_TOKEN }));
+  return (_client ??= new Client({ token: getEnv().QSTASH_TOKEN }));
 }
 
 export async function publishJob<T extends Record<string, unknown>>(

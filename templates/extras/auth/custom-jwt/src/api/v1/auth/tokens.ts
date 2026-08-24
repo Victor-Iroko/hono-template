@@ -2,10 +2,14 @@ import { createHash, randomBytes } from "node:crypto";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import type { Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
-import { env } from "../../../core/env-validation.js";
+import { getEnv } from "../../../core/env-validation.js";
 import { unauthorizedError } from "../../../core/errors.js";
 
-const JWT_SECRET = new TextEncoder().encode(env.ACCESS_TOKEN_SECRET_KEY);
+let _jwtSecret: Uint8Array | undefined;
+
+export function getJwtSecret(): Uint8Array {
+  return (_jwtSecret ??= new TextEncoder().encode(getEnv().ACCESS_TOKEN_SECRET_KEY));
+}
 
 export interface AccessTokenPayload extends JWTPayload {
   userId: string;
@@ -28,6 +32,7 @@ export async function signAccessToken(payload: {
   role?: string;
   sid: string;
 }): Promise<string> {
+  const env = getEnv();
   return await new SignJWT({
     userId: payload.userId,
     email: payload.email,
@@ -38,12 +43,12 @@ export async function signAccessToken(payload: {
     .setSubject(payload.userId)
     .setIssuedAt()
     .setExpirationTime(`${env.ACCESS_TOKEN_EXPIRE_MINUTES}m`)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload as AccessTokenPayload;
   } catch (err: unknown) {
     throw unauthorizedError("Invalid or expired access token", { cause: err });
@@ -59,6 +64,7 @@ export function extractBearerToken(c: Context): string | undefined {
 }
 
 export function setAuthCookies(c: Context, accessToken: string): void {
+  const env = getEnv();
   setCookie(c, "access_token", accessToken, {
     httpOnly: true,
     secure: env.APP_ENV === "production",

@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { env } from "../../../core/env-validation.js";
+import { getEnv } from "../../../core/env-validation.js";
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -12,12 +12,12 @@ export interface SendEmailOptions {
 let _resend: Resend | undefined;
 
 export function getResend(): Resend {
-  return (_resend ??= new Resend(env.RESEND_API_KEY));
+  return (_resend ??= new Resend(getEnv().RESEND_API_KEY));
 }
 
 export const emailService = {
   send: async (options: SendEmailOptions): Promise<{ messageId?: string }> => {
-    const defaultFrom = env.EMAIL_FROM;
+    const defaultFrom = getEnv().EMAIL_FROM;
     const resend = getResend();
 
     const { data, error } = await resend.emails.send({

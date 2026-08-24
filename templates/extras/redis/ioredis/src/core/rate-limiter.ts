@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { redis } from "./redis.js";
+import { getRedis } from "./redis.js";
 import { rateLimitedError } from "./errors.js";
 
 export const slidingWindowRateLimiter = (
@@ -13,7 +13,7 @@ export const slidingWindowRateLimiter = (
     const now = Date.now();
     const windowStart = now - windowSeconds * 1000;
 
-    const pipeline = redis.pipeline();
+    const pipeline = getRedis().pipeline();
     pipeline.zremrangebyscore(key, 0, windowStart);
     pipeline.zadd(key, now, `${now}-${Math.random()}`);
     pipeline.zcard(key);

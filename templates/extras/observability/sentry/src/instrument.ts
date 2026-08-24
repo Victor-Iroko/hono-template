@@ -1,11 +1,12 @@
 import * as Sentry from "@sentry/node";
-import { env } from "./core/env-validation.js";
+import { getEnv } from "./core/env-validation.js";
 
 let _isInitialized = false;
 
 export function initializeInstrumentation(): void {
   if (_isInitialized) return;
 
+  const env = getEnv();
   const dsn = env.SENTRY_DSN;
   if (!dsn) return;
 

@@ -5,11 +5,12 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { env } from "../core/env-validation.js";
+import { getEnv } from "../core/env-validation.js";
 
 let _s3Client: S3Client | undefined;
 
 export function getS3Client(): S3Client {
+  const env = getEnv();
   return (
     _s3Client ??= new S3Client({
       region: env.S3_REGION,
@@ -28,7 +29,7 @@ export const storageService = {
     key: string,
     contentType: string,
     expiresInSeconds: number = 300,
-    bucket: string = env.S3_BUCKET
+    bucket: string = getEnv().S3_BUCKET
   ): Promise<string> => {
     const command = new PutObjectCommand({
       Bucket: bucket,
@@ -41,7 +42,7 @@ export const storageService = {
   getSignedDownloadUrl: async (
     key: string,
     expiresInSeconds: number = 3600,
-    bucket: string = env.S3_BUCKET
+    bucket: string = getEnv().S3_BUCKET
   ): Promise<string> => {
     const command = new GetObjectCommand({
       Bucket: bucket,
@@ -54,7 +55,7 @@ export const storageService = {
     key: string,
     body: Uint8Array | Buffer,
     contentType: string,
-    bucket: string = env.S3_BUCKET
+    bucket: string = getEnv().S3_BUCKET
   ): Promise<void> => {
     const command = new PutObjectCommand({
       Bucket: bucket,
@@ -67,7 +68,7 @@ export const storageService = {
 
   deleteFile: async (
     key: string,
-    bucket: string = env.S3_BUCKET
+    bucket: string = getEnv().S3_BUCKET
   ): Promise<void> => {
     const command = new DeleteObjectCommand({
       Bucket: bucket,

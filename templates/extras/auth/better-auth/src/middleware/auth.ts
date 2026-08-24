@@ -1,10 +1,10 @@
 import { createMiddleware } from "hono/factory";
-import { auth } from "../core/auth.js";
+import { getAuth } from "../core/auth.js";
 import { unauthorizedError } from "../core/errors.js";
 import type { Variables } from "../index.js";
 
 export const requireAuth = createMiddleware<{ Variables: Variables }>(async (c, next) => {
-  const session = await auth.api.getSession({
+  const session = await getAuth().api.getSession({
     headers: c.req.raw.headers,
   });
 

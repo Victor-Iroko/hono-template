@@ -3,12 +3,14 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
-import { env } from "./core/env-validation.js";
+import { getEnv } from "./core/env-validation.js";
 
 let sdk: NodeSDK | null = null;
 
 export function initializeInstrumentation(): void {
   if (sdk) return;
+
+  const env = getEnv();
 
   const traceExporter = new OTLPTraceExporter({
     url: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,

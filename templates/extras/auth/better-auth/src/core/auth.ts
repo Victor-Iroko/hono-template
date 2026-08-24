@@ -1,15 +1,15 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "../db/client.js";
+import { getDb } from "../db/client.js";
 
-type AuthInstance = ReturnType<typeof betterAuth>;
-let _auth: AuthInstance | undefined;
+export type Auth = ReturnType<typeof betterAuth>;
+let _auth: Auth | undefined;
 
-export function getAuth(): AuthInstance {
+export function getAuth(): Auth {
   if (_auth) return _auth;
 
   return (_auth = betterAuth({
-    database: drizzleAdapter(db, {
+    database: drizzleAdapter(getDb(), {
       provider: "pg",
     }),
     emailAndPassword: {
@@ -21,14 +21,3 @@ export function getAuth(): AuthInstance {
     },
   }));
 }
-
-export const auth = new Proxy({} as AuthInstance, {
-  get(_, prop: string | symbol, receiver: unknown) {
-    const target = getAuth();
-    const value = Reflect.get(target, prop, receiver);
-    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
-  },
-  has: (_, prop: string | symbol) => Reflect.has(getAuth(), prop),
-  ownKeys: () => Reflect.ownKeys(getAuth()),
-  getOwnPropertyDescriptor: (_, prop: string | symbol) => Reflect.getOwnPropertyDescriptor(getAuth(), prop),
-});

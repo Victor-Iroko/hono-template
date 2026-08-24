@@ -1,12 +1,12 @@
 import type { Context } from "hono";
 import { normalizeError, serializeError } from "./errors.js";
-import { logger } from "./logger.js";
+import { getLogger } from "./logger.js";
 import type { Variables } from "../index.js";
 
 export function onErrorHandler(error: unknown, c: Context<{ Variables: Variables }>) {
   const err = normalizeError(error);
   const requestId = c.get("requestId");
-  const log = c.get("logger") ?? logger;
+  const log = c.get("logger") ?? getLogger();
 
   log.error(
     {
