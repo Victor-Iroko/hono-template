@@ -5,11 +5,10 @@ import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { env } from "./core/env-validation.js";
 
-let _isInitialized = false;
 let sdk: NodeSDK | null = null;
 
 export function initializeInstrumentation(): void {
-  if (_isInitialized) return;
+  if (sdk) return;
 
   const traceExporter = new OTLPTraceExporter({
     url: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
@@ -30,7 +29,6 @@ export function initializeInstrumentation(): void {
   });
 
   sdk.start();
-  _isInitialized = true;
 
   process.on("SIGTERM", () => {
     sdk?.shutdown().finally(() => process.exit(0));
@@ -38,5 +36,5 @@ export function initializeInstrumentation(): void {
 }
 
 export function isInstrumentationInitialized(): boolean {
-  return _isInitialized;
+  return sdk !== null;
 }

@@ -12,8 +12,9 @@ import { setAuthCookies, clearAuthCookies, type AccessTokenPayload } from "./tok
 import type { ClientMeta } from "./session.js";
 import { validationError } from "../../../core/errors.js";
 import { requireAuth } from "../../../middleware/auth.middleware.js";
+import type { Variables } from "../../../index.js";
 
-function getClientMeta(c: Context): ClientMeta {
+function getClientMeta(c: Context<{ Variables: Variables }>): ClientMeta {
   return {
     deviceId: c.req.header("x-device-id"),
     deviceName: c.req.header("x-device-name"),
@@ -22,7 +23,9 @@ function getClientMeta(c: Context): ClientMeta {
   };
 }
 
-export const authRouter = new Hono();
+export const authRouter = new Hono<{ Variables: Variables }>();
+// [INSTALLER:AUTH_ROUTES]
+
 
 authRouter.post("/login", async (c) => {
   const body = await c.req.json().catch(() => null);
@@ -69,7 +72,7 @@ authRouter.post("/refresh", async (c) => {
 authRouter.post("/logout", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const parsed = logoutSchema.safeParse(body);
-  const user = c.get("user") as AccessTokenPayload | undefined;
+  const user = c.get("user");
 
   await logoutUser(user?.sid, parsed.success ? parsed.data.refreshToken : undefined);
   clearAuthCookies(c);
@@ -78,8 +81,8 @@ authRouter.post("/logout", async (c) => {
 });
 
 authRouter.post("/logout/all", requireAuth, async (c) => {
-  const user = c.get("user") as AccessTokenPayload;
-  const revokedCount = await logoutAllDevices(user.userId);
+  const user = c.get("user");
+  const revokedCount = user ? await logoutAllDevices(user.userId) : 0;
   clearAuthCookies(c);
 
   return c.json({
@@ -89,6 +92,7 @@ authRouter.post("/logout/all", requireAuth, async (c) => {
 });
 
 authRouter.get("/me", requireAuth, (c) => {
-  const user = c.get("user") as AccessTokenPayload;
+  const user = c.get("user");
   return c.json({ success: true, user });
 });
+

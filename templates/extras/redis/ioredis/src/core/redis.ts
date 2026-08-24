@@ -1,17 +1,15 @@
 import { Redis } from "ioredis";
 import { env } from "./env-validation.js";
 
-let redisInstance: Redis | null = null;
+let _redis: Redis | undefined;
 
 export function getRedis(): Redis {
-  if (!redisInstance) {
-    const redisUrl = env.REDIS_URL;
-    redisInstance = new Redis(redisUrl, {
+  return (
+    _redis ??= new Redis(env.REDIS_URL, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
-    });
-  }
-  return redisInstance;
+    })
+  );
 }
 
 export const redis = new Proxy({} as Redis, {
@@ -20,13 +18,7 @@ export const redis = new Proxy({} as Redis, {
     const value = Reflect.get(target, prop, receiver);
     return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
   },
-  has: (_, prop: string | symbol) => {
-    return Reflect.has(getRedis(), prop);
-  },
-  ownKeys: () => {
-    return Reflect.ownKeys(getRedis());
-  },
-  getOwnPropertyDescriptor: (_, prop: string | symbol) => {
-    return Reflect.getOwnPropertyDescriptor(getRedis(), prop);
-  },
+  has: (_, prop: string | symbol) => Reflect.has(getRedis(), prop),
+  ownKeys: () => Reflect.ownKeys(getRedis()),
+  getOwnPropertyDescriptor: (_, prop: string | symbol) => Reflect.getOwnPropertyDescriptor(getRedis(), prop),
 });

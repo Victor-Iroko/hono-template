@@ -12,22 +12,15 @@ let _db: Database | undefined;
 let _client: postgres.Sql | undefined;
 
 export function getQueryClient(): postgres.Sql {
-  if (!_client) {
-    const connectionString = env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/myapp";
-    _client = postgres(connectionString);
-  }
-  return _client;
+  return (_client ??= postgres(env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/myapp"));
 }
 
 export function getDb(): Database {
-  if (!_db) {
-    _db = drizzle(getQueryClient(), { schema });
-  }
-  return _db;
+  return (_db ??= drizzle(getQueryClient(), { schema }));
 }
 
 export const db = new Proxy({} as Database, {
-  get(_target, prop: string | symbol) {
+  get(_, prop: string | symbol) {
     const instance = getDb();
     const value = Reflect.get(instance, prop);
     return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(instance) : value;

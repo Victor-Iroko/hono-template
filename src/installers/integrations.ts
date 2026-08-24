@@ -119,7 +119,7 @@ authRouter.post("/google", async (c) => {
       await injectAtMarker(
         ctx.projectDir,
         "src/api/v1/auth/router.ts",
-        "export const authRouter = new Hono();",
+        "// [INSTALLER:AUTH_ROUTES]",
         googleAuthRoute
       );
     }

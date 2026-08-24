@@ -7,11 +7,11 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../core/env-validation.js";
 
-let s3ClientInstance: S3Client | null = null;
+let _s3Client: S3Client | undefined;
 
 export function getS3Client(): S3Client {
-  if (!s3ClientInstance) {
-    s3ClientInstance = new S3Client({
+  return (
+    _s3Client ??= new S3Client({
       region: env.S3_REGION,
       endpoint: env.S3_ENDPOINT,
       forcePathStyle: env.S3_FORCE_PATH_STYLE === "true",
@@ -19,9 +19,8 @@ export function getS3Client(): S3Client {
         accessKeyId: env.S3_ACCESS_KEY_ID,
         secretAccessKey: env.S3_SECRET_ACCESS_KEY,
       },
-    });
-  }
-  return s3ClientInstance;
+    })
+  );
 }
 
 export const storageService = {

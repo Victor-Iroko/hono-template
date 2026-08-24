@@ -9,10 +9,10 @@ import { validationError, unauthorizedError } from "../../core/errors.js";
 import { logger } from "../../core/logger.js";
 
 const initializeSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   amount: z.number().positive(),
-  callback_url: z.string().url().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  callback_url: z.url().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const paymentsRouter = new Hono();

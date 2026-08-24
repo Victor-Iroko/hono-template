@@ -117,8 +117,8 @@ my-app/
 │   │   ├── email.ts             # Nodemailer email sender
 │   │   └── storage.ts           # S3 presigned URL client
 │   └── middleware/
-│       ├── request-context.ts   # Request ID and timing middleware
-│       └── auth.ts              # Authentication guard middleware
+│       ├── request-context.middleware.ts # Request ID and timing middleware
+│       └── auth.ts                       # Authentication guard middleware
 ├── docker-compose.yml           # Local dev services (Postgres, Redis, RustFS, Mailpit)
 ├── drizzle.config.ts            # Drizzle Kit migration configuration
 ├── vitest.config.ts             # Vitest test configuration

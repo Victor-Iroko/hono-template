@@ -5,9 +5,11 @@ import { v1Router } from "./api/v1/router.js";
 import type { RequestContext } from "./core/request-context.js";
 // [INSTALLER:IMPORTS]
 
+// [INSTALLER:VARIABLES_START]
 export type Variables = RequestContext & {
   user?: unknown;
 };
+// [INSTALLER:VARIABLES_END]
 
 const app = new Hono<{ Variables: Variables }>();
 

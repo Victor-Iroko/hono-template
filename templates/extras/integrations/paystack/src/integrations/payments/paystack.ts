@@ -13,23 +13,22 @@ import type {
 
 const BASE_URL = "https://api.paystack.co";
 
-let fetchClient: $Fetch | null = null;
+let _fetchClient: $Fetch | undefined;
 
 function getPaystackSecretKey(): string {
   return env.PAYSTACK_SECRET_KEY;
 }
 
 export function getPaystackClient(): $Fetch {
-  if (!fetchClient) {
-    fetchClient = ofetch.create({
+  return (
+    _fetchClient ??= ofetch.create({
       baseURL: BASE_URL,
       headers: {
         Authorization: `Bearer ${getPaystackSecretKey()}`,
         "Content-Type": "application/json",
       },
-    });
-  }
-  return fetchClient;
+    })
+  );
 }
 
 export async function initializeTransaction(

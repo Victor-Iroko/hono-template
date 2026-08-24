@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mergePackageJson, readPackageJson } from "../src/utils/pkg-json.js";
 import { appendEnvVars } from "../src/utils/env.js";
-import { injectAtMarker, prependImports } from "../src/utils/injector.js";
+import { injectAtMarker, prependImports, replaceMarkerBlock } from "../src/utils/injector.js";
 import { readFileSafe, writeFileSafe } from "../src/utils/fs.js";
 
 describe("Scaffolding Utilities", () => {
@@ -89,4 +89,32 @@ export default app;`;
     const result = await readFileSafe(join(tempDir, "src/index.ts"));
     expect(result.startsWith('import "./instrument.js";')).toBe(true);
   });
+
+  it("should replace marker blocks safely", async () => {
+    const initialContent = `import { Hono } from "hono";
+// [INSTALLER:VARIABLES_START]
+export type Variables = {
+  user?: unknown;
+};
+// [INSTALLER:VARIABLES_END]
+
+const app = new Hono();`;
+
+    await writeFileSafe(join(tempDir, "src/index.ts"), initialContent);
+
+    await replaceMarkerBlock(
+      tempDir,
+      "src/index.ts",
+      "// [INSTALLER:VARIABLES_START]",
+      "// [INSTALLER:VARIABLES_END]",
+      `export type Variables = {
+  user?: { id: string };
+};`
+    );
+
+    const result = await readFileSafe(join(tempDir, "src/index.ts"));
+    expect(result).toContain("user?: { id: string };");
+    expect(result).not.toContain("user?: unknown;");
+  });
 });
+

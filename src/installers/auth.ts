@@ -3,7 +3,7 @@ import type { InstallerContext } from "./types.js";
 import { copyTemplateDir } from "../utils/fs.js";
 import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
-import { injectAtMarker } from "../utils/injector.js";
+import { injectAtMarker, replaceMarkerBlock } from "../utils/injector.js";
 
 export async function installAuth(ctx: InstallerContext): Promise<void> {
   const { auth } = ctx.options;
@@ -43,6 +43,24 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       "// [INSTALLER:ENV_SCHEMA]",
       `  BETTER_AUTH_SECRET: z.string(),
   BETTER_AUTH_URL: z.string().default("http://localhost:3000"),`
+    );
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/index.ts",
+      "// [INSTALLER:IMPORTS]",
+      'import type { auth } from "./core/auth.js";'
+    );
+
+    await replaceMarkerBlock(
+      ctx.projectDir,
+      "src/index.ts",
+      "// [INSTALLER:VARIABLES_START]",
+      "// [INSTALLER:VARIABLES_END]",
+      `export type Variables = RequestContext & {
+  user?: typeof auth.$Infer.Session.user;
+  session?: typeof auth.$Infer.Session.session;
+};`
     );
 
     await injectAtMarker(
@@ -94,6 +112,23 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       `  ACCESS_TOKEN_SECRET_KEY: z.string(),
   ACCESS_TOKEN_EXPIRE_MINUTES: z.coerce.number().default(15),
   SESSION_EXPIRE_DAYS: z.coerce.number().default(7),`
+    );
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/index.ts",
+      "// [INSTALLER:IMPORTS]",
+      'import type { AccessTokenPayload } from "./api/v1/auth/tokens.js";'
+    );
+
+    await replaceMarkerBlock(
+      ctx.projectDir,
+      "src/index.ts",
+      "// [INSTALLER:VARIABLES_START]",
+      "// [INSTALLER:VARIABLES_END]",
+      `export type Variables = RequestContext & {
+  user?: AccessTokenPayload;
+};`
     );
 
     await injectAtMarker(

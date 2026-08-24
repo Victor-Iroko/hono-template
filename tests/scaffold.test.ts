@@ -141,6 +141,10 @@ describe("End-to-End Scaffolding Pipeline", () => {
     const indexContent = await readFileSafe(join(tempDir, "src/index.ts"));
     expect(indexContent).toContain('app.route("/api/v1", v1Router);');
     expect(indexContent).toContain("setupOpenApiDocs(app);");
+    expect(indexContent).toContain('import type { auth } from "./core/auth.js";');
+    expect(indexContent).toContain("user?: typeof auth.$Infer.Session.user;");
+    expect(indexContent).toContain("session?: typeof auth.$Infer.Session.session;");
+    expect(indexContent).not.toContain("user?: unknown;");
   });
 
   it("should scaffold a Node.js + Custom JWT + Firebase Auth + ioredis + Sentry + Nodemailer stack", async () => {
@@ -180,6 +184,11 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(await fileExists(join(tempDir, "src/services/storage.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/core/sentry.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/services/email.ts"))).toBe(true);
+
+    const indexContent = await readFileSafe(join(tempDir, "src/index.ts"));
+    expect(indexContent).toContain('import type { AccessTokenPayload } from "./api/v1/auth/tokens.js";');
+    expect(indexContent).toContain("user?: AccessTokenPayload;");
+    expect(indexContent).not.toContain("user?: unknown;");
 
     const authContent = await readFileSafe(join(tempDir, "src/api/v1/auth/router.ts"));
     expect(authContent).toContain('/google');

@@ -12,22 +12,15 @@ let _sqlite: Database.Database | undefined;
 let _db: DatabaseInstance | undefined;
 
 export function getSqlite(): Database.Database {
-  if (!_sqlite) {
-    const dbPath = env.DATABASE_URL || "sqlite.db";
-    _sqlite = new Database(dbPath);
-  }
-  return _sqlite;
+  return (_sqlite ??= new Database(env.DATABASE_URL || "sqlite.db"));
 }
 
 export function getDb(): DatabaseInstance {
-  if (!_db) {
-    _db = drizzle(getSqlite(), { schema });
-  }
-  return _db;
+  return (_db ??= drizzle(getSqlite(), { schema }));
 }
 
 export const db = new Proxy({} as DatabaseInstance, {
-  get(_target, prop: string | symbol) {
+  get(_, prop: string | symbol) {
     const instance = getDb();
     const value = Reflect.get(instance, prop);
     return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(instance) : value;

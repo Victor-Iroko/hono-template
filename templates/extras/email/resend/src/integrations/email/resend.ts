@@ -9,13 +9,10 @@ export interface SendEmailOptions {
   from?: string;
 }
 
-let resendInstance: Resend | null = null;
+let _resend: Resend | undefined;
 
 export function getResend(): Resend {
-  if (!resendInstance) {
-    resendInstance = new Resend(env.RESEND_API_KEY);
-  }
-  return resendInstance;
+  return (_resend ??= new Resend(env.RESEND_API_KEY));
 }
 
 export const emailService = {

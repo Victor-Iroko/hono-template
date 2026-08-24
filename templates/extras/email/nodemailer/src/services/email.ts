@@ -9,24 +9,24 @@ export interface SendEmailOptions {
   from?: string;
 }
 
-let transporterInstance: Transporter | null = null;
+let _transporter: Transporter | undefined;
 
 export function getTransporter(): Transporter {
-  if (!transporterInstance) {
-    const smtpConfig = {
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      secure: env.SMTP_SECURE === "true",
-      auth: env.SMTP_USER
-        ? {
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASSWORD || "",
-          }
-        : undefined,
-    };
-    transporterInstance = nodemailer.createTransport(smtpConfig);
-  }
-  return transporterInstance;
+  if (_transporter) return _transporter;
+
+  const smtpConfig = {
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_SECURE === "true",
+    auth: env.SMTP_USER
+      ? {
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASSWORD || "",
+        }
+      : undefined,
+  };
+
+  return (_transporter = nodemailer.createTransport(smtpConfig));
 }
 
 export const emailService = {

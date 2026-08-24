@@ -8,18 +8,18 @@ import {
 } from "cloudinary";
 import { env } from "../../../core/env-validation.js";
 
-let _isConfigured = false;
+let _configured = false;
 
-export function getCloudinary() {
-  if (!_isConfigured) {
-    cloudinary.config({
-      cloud_name: env.CLOUDINARY_CLOUD_NAME,
-      api_key: env.CLOUDINARY_API_KEY,
-      api_secret: env.CLOUDINARY_API_SECRET,
-      secure: true,
-    });
-    _isConfigured = true;
-  }
+export function getCloudinary(): typeof cloudinary {
+  if (_configured) return cloudinary;
+
+  cloudinary.config({
+    cloud_name: env.CLOUDINARY_CLOUD_NAME,
+    api_key: env.CLOUDINARY_API_KEY,
+    api_secret: env.CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+  _configured = true;
   return cloudinary;
 }
 

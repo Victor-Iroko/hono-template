@@ -12,22 +12,15 @@ let _pool: mysql.Pool | undefined;
 let _db: DatabaseInstance | undefined;
 
 export function getPool(): mysql.Pool {
-  if (!_pool) {
-    const connectionUri = env.DATABASE_URL || "mysql://root:password@localhost:3306/myapp";
-    _pool = mysql.createPool(connectionUri);
-  }
-  return _pool;
+  return (_pool ??= mysql.createPool(env.DATABASE_URL || "mysql://root:password@localhost:3306/myapp"));
 }
 
 export function getDb(): DatabaseInstance {
-  if (!_db) {
-    _db = drizzle(getPool(), { schema, mode: "default" });
-  }
-  return _db;
+  return (_db ??= drizzle(getPool(), { schema, mode: "default" }));
 }
 
 export const db = new Proxy({} as DatabaseInstance, {
-  get(_target, prop: string | symbol) {
+  get(_, prop: string | symbol) {
     const instance = getDb();
     const value = Reflect.get(instance, prop);
     return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(instance) : value;

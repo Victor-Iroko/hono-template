@@ -3,12 +3,12 @@ import { env } from "./env-validation.js";
 
 let _logger: Logger | undefined;
 
-export function initLogger(): Logger {
+export function getLogger(): Logger {
   if (_logger) return _logger;
 
   const isPrettyLoggingEnabled = env.APP_ENV === "development" && !process.env.VERCEL;
 
-  _logger = pino({
+  return (_logger = pino({
     level: env.LOG_LEVEL || "info",
     base: {
       service: "api",
@@ -44,33 +44,20 @@ export function initLogger(): Logger {
           },
         }
       : {}),
-  });
-
-  return _logger;
+  }));
 }
 
-export function getLogger(): Logger {
-  if (!_logger) {
-    return initLogger();
-  }
-  return _logger;
-}
+export const initLogger = getLogger;
 
 export const logger = new Proxy({} as Logger, {
-  get(_target, prop: string | symbol, receiver: unknown) {
+  get(_, prop: string | symbol, receiver: unknown) {
     const target = getLogger();
     const value = Reflect.get(target, prop, receiver);
     return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
   },
-  has(_target, prop: string | symbol) {
-    return Reflect.has(getLogger(), prop);
-  },
-  ownKeys(_target) {
-    return Reflect.ownKeys(getLogger());
-  },
-  getOwnPropertyDescriptor(_target, prop: string | symbol) {
-    return Reflect.getOwnPropertyDescriptor(getLogger(), prop);
-  },
+  has: (_, prop: string | symbol) => Reflect.has(getLogger(), prop),
+  ownKeys: () => Reflect.ownKeys(getLogger()),
+  getOwnPropertyDescriptor: (_, prop: string | symbol) => Reflect.getOwnPropertyDescriptor(getLogger(), prop),
 });
 
 export default logger;

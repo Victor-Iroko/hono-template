@@ -1,38 +1,26 @@
 import type { ErrorHandler, NotFoundHandler } from "hono";
-import type { StatusCode } from "hono/utils/http-status";
-import { AppError } from "./errors.js";
+import { normalizeError, serializeError } from "./errors.js";
 
-export const errorHandler: ErrorHandler = (err, c) => {
-  if (err instanceof AppError) {
-    c.status(err.statusCode as StatusCode);
-    return c.json({
-      success: false,
-      error: {
-        code: err.code,
-        message: err.message,
-        details: err.details,
-      },
-    });
+export const errorHandler: ErrorHandler = (error, c) => {
+  const err = normalizeError(error);
+
+  console.error("Unhandled error:", error);
+
+  for (const [key, value] of Object.entries(err.headers ?? {})) {
+    c.header(key, value);
   }
 
-  console.error("Unhandled error:", err);
-  c.status(500);
-  return c.json({
-    success: false,
-    error: {
-      code: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected error occurred",
-    },
-  });
+  return c.json(serializeError(err), err.status);
 };
 
 export const notFoundHandler: NotFoundHandler = (c) => {
-  c.status(404);
-  return c.json({
-    success: false,
-    error: {
-      code: "NOT_FOUND",
-      message: `Route not found: ${c.req.method} ${c.req.path}`,
+  return c.json(
+    {
+      error: {
+        code: "not_found",
+        message: `Route not found: ${c.req.method} ${c.req.path}`,
+      },
     },
-  });
+    404
+  );
 };

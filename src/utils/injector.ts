@@ -47,3 +47,32 @@ export async function prependImports(
   await writeFileSafe(filePath, newContent);
   return true;
 }
+
+export async function replaceMarkerBlock(
+  projectDir: string,
+  relativePath: string,
+  startMarker: string,
+  endMarker: string,
+  replacementContent: string
+): Promise<boolean> {
+  const filePath = join(projectDir, relativePath);
+  if (!(await fileExists(filePath))) {
+    return false;
+  }
+
+  const fileContent = await readFileSafe(filePath);
+  const startIndex = fileContent.indexOf(startMarker);
+  const endIndex = fileContent.indexOf(endMarker);
+
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return false;
+  }
+
+  const before = fileContent.substring(0, startIndex);
+  const after = fileContent.substring(endIndex + endMarker.length);
+  const newContent = `${before}${startMarker}\n${replacementContent.trim()}\n${endMarker}${after}`;
+
+  await writeFileSafe(filePath, newContent);
+  return true;
+}
+

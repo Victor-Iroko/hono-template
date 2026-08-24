@@ -6,11 +6,11 @@ export const ErrorResponseSchema = z.object({
     code: z.string(),
     message: z.string(),
     requestId: z.string().optional(),
-    meta: z.record(z.unknown()).optional(),
+    meta: z.record(z.string(), z.unknown()).optional(),
   }),
 });
 
-export const SuccessResponseSchema = <T extends z.ZodTypeAny>(data: T) =>
+export const SuccessResponseSchema = <T extends z.ZodType>(data: T) =>
   z.object({
     success: z.boolean(),
     data: data,
@@ -20,7 +20,7 @@ export function successResponse<T>(data: T) {
   return { success: true, data } as const;
 }
 
-export const PaginatedSuccessResponseSchema = <T extends z.ZodTypeAny>(data: T) =>
+export const PaginatedSuccessResponseSchema = <T extends z.ZodType>(data: T) =>
   z.object({
     success: z.boolean(),
     data,

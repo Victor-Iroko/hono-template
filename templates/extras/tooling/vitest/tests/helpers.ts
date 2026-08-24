@@ -40,7 +40,7 @@ export async function api(path: string, options: ApiOptions = {}): Promise<ApiRe
   return { status: res.status, body: parsed, headers: res.headers, text };
 }
 
-export function expectApiData<S extends z.ZodTypeAny>(schema: S, body: unknown): z.infer<S> {
+export function expectApiData<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
   expect(body).toMatchObject({ success: true });
   const payload = (body as { data?: unknown }).data;
   const result = schema.safeParse(payload);

@@ -1,9 +1,8 @@
-import { validateEnv, env } from "./core/env-validation.js";
+import { validateEnv } from "./core/env.js";
 
-validateEnv();
+const env = validateEnv();
 
-const { isInstrumentationInitialized, initializeInstrumentation } = await import("./instrument.js").catch(() => ({
-  isInstrumentationInitialized: () => false,
+const { initializeInstrumentation } = await import("./instrument.js").catch(() => ({
   initializeInstrumentation: () => {},
 }));
 
