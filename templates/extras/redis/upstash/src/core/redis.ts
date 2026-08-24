@@ -1,12 +1,13 @@
 import { Redis } from "@upstash/redis";
+import { env } from "./env-validation.js";
 
 let redisInstance: Redis | null = null;
 
 export function getRedis(): Redis {
   if (!redisInstance) {
     redisInstance = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL || "http://localhost:8079",
-      token: process.env.UPSTASH_REDIS_REST_TOKEN || "local-dev-token",
+      url: env.UPSTASH_REDIS_REST_URL,
+      token: env.UPSTASH_REDIS_REST_TOKEN,
     });
   }
   return redisInstance;

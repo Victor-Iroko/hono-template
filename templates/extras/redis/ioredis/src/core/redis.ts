@@ -1,10 +1,11 @@
 import { Redis } from "ioredis";
+import { env } from "./env-validation.js";
 
 let redisInstance: Redis | null = null;
 
 export function getRedis(): Redis {
   if (!redisInstance) {
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+    const redisUrl = env.REDIS_URL;
     redisInstance = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,

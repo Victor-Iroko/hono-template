@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { env } from "../../../core/env-validation.js";
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -12,15 +13,14 @@ let resendInstance: Resend | null = null;
 
 export function getResend(): Resend {
   if (!resendInstance) {
-    const apiKey = process.env.RESEND_API_KEY || "re_test_123456789";
-    resendInstance = new Resend(apiKey);
+    resendInstance = new Resend(env.RESEND_API_KEY);
   }
   return resendInstance;
 }
 
 export const emailService = {
   send: async (options: SendEmailOptions): Promise<{ messageId?: string }> => {
-    const defaultFrom = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_FROM || "onboarding@resend.dev";
+    const defaultFrom = env.EMAIL_FROM;
     const resend = getResend();
 
     const { data, error } = await resend.emails.send({

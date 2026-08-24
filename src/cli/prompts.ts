@@ -169,7 +169,7 @@ export async function promptProjectOptions(
       message: "Select file storage / media provider:",
       initialValue: "s3",
       options: [
-        { value: "s3", label: "S3 Object Storage (AWS S3 / Cloudflare R2 / RustFS / MinIO)", hint: "Presigned upload/download URLs" },
+        { value: "s3", label: "S3 Object Storage (AWS S3 / Cloudflare R2 / Floci / MinIO)", hint: "Presigned upload/download URLs" },
         { value: "cloudinary", label: "Cloudinary (Media CDN, image transforms, direct upload signatures)", hint: "Cloud image/video hosting" },
         { value: "none", label: "None", hint: "Skip storage setup" },
       ],

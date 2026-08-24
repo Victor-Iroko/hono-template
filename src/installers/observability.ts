@@ -40,6 +40,15 @@ export async function installObservability(ctx: InstallerContext): Promise<void>
       comments: ["OpenTelemetry Observability"],
     });
 
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  OTEL_SERVICE_NAME: z.string().default("${ctx.options.projectName}"),
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().default("http://localhost:4318/v1/traces"),
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().default("http://localhost:4318/v1/metrics"),`
+    );
+
     await prependImports(
       ctx.projectDir,
       "src/index.ts",
@@ -65,6 +74,13 @@ export async function installObservability(ctx: InstallerContext): Promise<void>
       },
       comments: ["Sentry Error Tracking"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  SENTRY_DSN: z.string().optional(),`
+    );
 
     await prependImports(
       ctx.projectDir,

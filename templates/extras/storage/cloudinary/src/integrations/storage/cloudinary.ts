@@ -6,15 +6,16 @@ import {
   type ResourceType,
   type TransformationOptions,
 } from "cloudinary";
+import { env } from "../../../core/env-validation.js";
 
 let _isConfigured = false;
 
 export function getCloudinary() {
   if (!_isConfigured) {
     cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "demo",
-      api_key: process.env.CLOUDINARY_API_KEY || "1234567890",
-      api_secret: process.env.CLOUDINARY_API_SECRET || "mock_secret",
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
       secure: true,
     });
     _isConfigured = true;
@@ -98,16 +99,16 @@ export async function generatePresignedUpload(
     allowed_formats: allowedFormats.join(","),
   };
 
-  const apiSecret = process.env.CLOUDINARY_API_SECRET || "mock_secret";
+  const apiSecret = env.CLOUDINARY_API_SECRET;
   const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "demo";
+  const cloudName = env.CLOUDINARY_CLOUD_NAME;
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
 
   return {
     uploadUrl,
     publicId,
     signature,
-    apiKey: process.env.CLOUDINARY_API_KEY || "1234567890",
+    apiKey: env.CLOUDINARY_API_KEY,
     timestamp,
     folder,
     expiresIn: expirationMinutes * 60,

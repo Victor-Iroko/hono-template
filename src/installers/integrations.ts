@@ -33,6 +33,14 @@ export async function installIntegrations(ctx: InstallerContext): Promise<void> 
 
     await injectAtMarker(
       ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  PAYSTACK_SECRET_KEY: z.string(),
+  PAYSTACK_PUBLIC_KEY: z.string(),`
+    );
+
+    await injectAtMarker(
+      ctx.projectDir,
       "src/api/v1/router.ts",
       "// [INSTALLER:V1_IMPORTS]",
       'import { paymentsRouter } from "./payments.js";'
@@ -71,6 +79,16 @@ export async function installIntegrations(ctx: InstallerContext): Promise<void> 
       comments: ["Firebase Admin SDK (Google & Social Auth Verification)"],
     });
 
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  FIREBASE_SERVICE_ACCOUNT_KEY: z.string().optional(),`
+    );
+
     if (auth === "custom-jwt") {
       const googleAuthRoute = `
 authRouter.post("/google", async (c) => {
@@ -87,10 +105,15 @@ authRouter.post("/google", async (c) => {
     name: fbUser.name,
     role: "user",
   };
-  const tokens = await signAccessToken({ userId: user.id, email: user.email, role: user.role });
-  const refreshToken = await signRefreshToken({ userId: user.id, email: user.email, role: user.role });
-  setAuthCookies(c, tokens);
-  return c.json({ success: true, user, tokens: { accessToken: tokens, refreshToken } });
+  const { upsertUserSession } = await import("./session.js");
+  const { tokens } = await upsertUserSession(user, {
+    deviceId: c.req.header("x-device-id"),
+    deviceName: c.req.header("x-device-name"),
+    userAgent: c.req.header("user-agent"),
+    ipAddress: c.req.header("x-forwarded-for")?.split(",")[0]?.trim(),
+  });
+  setAuthCookies(c, tokens.accessToken);
+  return c.json({ success: true, user, tokens });
 });
 `;
       await injectAtMarker(
@@ -122,5 +145,14 @@ authRouter.post("/google", async (c) => {
       },
       comments: ["Upstash QStash Background Queues"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  QSTASH_TOKEN: z.string(),
+  QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+  QSTASH_NEXT_SIGNING_KEY: z.string().optional(),`
+    );
   }
 }

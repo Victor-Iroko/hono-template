@@ -4,8 +4,10 @@ import { copyTemplateDir } from "../utils/fs.js";
 import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
 
+import { injectAtMarker } from "../utils/injector.js";
+
 export async function installStorage(ctx: InstallerContext): Promise<void> {
-  const { storage } = ctx.options;
+  const { storage, runtime } = ctx.options;
   if (storage === "none") {
     return;
   }
@@ -33,23 +35,36 @@ export async function installStorage(ctx: InstallerContext): Promise<void> {
       },
       comments: ["Cloudinary Image & Media Storage Configuration"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string(),`
+    );
   } else if (storage === "s3") {
-    const sourceDir = join(ctx.templateRoot, "extras", "storage", "s3");
+    const isBun = runtime === "bun";
+    const s3Template = isBun ? "s3-bun" : "s3";
+    const sourceDir = join(ctx.templateRoot, "extras", "storage", s3Template);
     await copyTemplateDir(sourceDir, ctx.projectDir);
 
-    await mergePackageJson(ctx.projectDir, {
-      dependencies: {
-        "@aws-sdk/client-s3": "^3.750.0",
-        "@aws-sdk/s3-request-presigner": "^3.750.0",
-      },
-    });
+    if (!isBun) {
+      await mergePackageJson(ctx.projectDir, {
+        dependencies: {
+          "@aws-sdk/client-s3": "^3.750.0",
+          "@aws-sdk/s3-request-presigner": "^3.750.0",
+        },
+      });
+    }
 
     await appendEnvVars(ctx.projectDir, {
       env: {
         S3_REGION: "us-east-1",
-        S3_ENDPOINT: "http://localhost:9000",
-        S3_ACCESS_KEY_ID: "rustfsadmin",
-        S3_SECRET_ACCESS_KEY: "rustfsadmin",
+        S3_ENDPOINT: "http://localhost:4566",
+        S3_ACCESS_KEY_ID: "test",
+        S3_SECRET_ACCESS_KEY: "test",
         S3_BUCKET: "app-uploads",
         S3_FORCE_PATH_STYLE: "true",
       },
@@ -61,7 +76,19 @@ export async function installStorage(ctx: InstallerContext): Promise<void> {
         S3_BUCKET: "my-production-bucket",
         S3_FORCE_PATH_STYLE: "false",
       },
-      comments: ["S3 Object Storage (Compatible with AWS S3, Cloudflare R2, MinIO, RustFS)"],
+      comments: ["S3 Object Storage (Compatible with AWS S3, Cloudflare R2, MinIO, Floci)"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  S3_REGION: z.string().default("us-east-1"),
+  S3_ENDPOINT: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string(),
+  S3_SECRET_ACCESS_KEY: z.string(),
+  S3_BUCKET: z.string(),
+  S3_FORCE_PATH_STYLE: z.string().default("true"),`
+    );
   }
 }

@@ -5,7 +5,7 @@ import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
 
 export async function installBase(ctx: InstallerContext): Promise<void> {
-  const { runtime, projectName } = ctx.options;
+  const { runtime } = ctx.options;
   const baseDir = join(ctx.templateRoot, "base", runtime);
 
   await copyTemplateDir(baseDir, ctx.projectDir);

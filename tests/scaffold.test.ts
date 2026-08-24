@@ -59,6 +59,8 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(await fileExists(join(tempDir, "drizzle.config.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/core/db.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/db/models/users.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/models/sessions.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/models/audit.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/db/models/index.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/db/relations.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/db/enums.ts"))).toBe(true);
@@ -96,7 +98,9 @@ describe("End-to-End Scaffolding Pipeline", () => {
     const compose = await readFileSafe(join(tempDir, "docker-compose.yml"));
     expect(compose).toContain("postgres:");
     expect(compose).toContain("redis:");
-    expect(compose).toContain("rustfs:");
+    expect(compose).toContain("upstash-proxy:");
+    expect(compose).toContain("floci:");
+    expect(compose).toContain("cloudflared:");
 
     // Check Tooling, CI, Husky, and Test helpers
     expect(await fileExists(join(tempDir, ".github/workflows/ci.yml"))).toBe(true);
@@ -117,11 +121,15 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(pkg.dependencies?.["@opentelemetry/sdk-node"]).toBeDefined();
     expect(pkg.dependencies?.["@scalar/hono-api-reference"]).toBeDefined();
     expect(pkg.dependencies?.["resend"]).toBeDefined();
-    expect(pkg.dependencies?.["@aws-sdk/client-s3"]).toBeDefined();
+    expect(pkg.dependencies?.["@aws-sdk/client-s3"]).toBeUndefined();
     expect(pkg.dependencies?.["ofetch"]).toBeDefined();
     expect(pkg.dependencies?.["@upstash/qstash"]).toBeDefined();
     expect(pkg.devDependencies?.["oxlint"]).toBeDefined();
     expect(pkg.devDependencies?.["vitest"]).toBeDefined();
+
+    // Check Bun S3 storage service uses native Bun.s3
+    const storageServiceContent = await readFileSafe(join(tempDir, "src/services/storage.ts"));
+    expect(storageServiceContent).toContain('import { S3Client } from "bun";');
 
     // Check v1Router & index.ts routing
     const v1RouterContent = await readFileSafe(join(tempDir, "src/api/v1/router.ts"));
@@ -161,6 +169,8 @@ describe("End-to-End Scaffolding Pipeline", () => {
     });
 
     expect(await fileExists(join(tempDir, "src/api/v1/auth/tokens.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/api/v1/auth/session.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/api/v1/auth/audit.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/service.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/schemas.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/router.ts"))).toBe(true);
@@ -217,5 +227,47 @@ describe("End-to-End Scaffolding Pipeline", () => {
 
     expect(await fileExists(join(tempDir, "wrangler.json"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/index.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/core/env-schema.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/core/env-validation.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/core/env.ts"))).toBe(true);
+
+    const indexContent = await readFileSafe(join(tempDir, "src/index.ts"));
+    expect(indexContent).toContain("initEnv(c.env as Record<string, unknown>);");
+  });
+
+  it("should scaffold a Node.js stack with S3 storage using AWS SDK", async () => {
+    await runInstallers({
+      options: {
+        projectName: "node-s3-app",
+        projectDir: tempDir,
+        runtime: "node",
+        db: "none",
+        auth: "none",
+        firebaseAuth: false,
+        redis: "none",
+        observability: "none",
+        docs: "none",
+        email: "none",
+        storage: "s3",
+        payments: "none",
+        qstash: false,
+        linter: "none",
+        git: false,
+        installDeps: false,
+        packageManager: "npm",
+      },
+      templateRoot,
+      projectDir: tempDir,
+    });
+
+    expect(await fileExists(join(tempDir, "src/services/storage.ts"))).toBe(true);
+
+    const storageServiceContent = await readFileSafe(join(tempDir, "src/services/storage.ts"));
+    expect(storageServiceContent).toContain('import {\n  S3Client,');
+    expect(storageServiceContent).toContain('@aws-sdk/client-s3');
+
+    const pkg = await readPackageJson(tempDir);
+    expect(pkg.dependencies?.["@aws-sdk/client-s3"]).toBeDefined();
+    expect(pkg.dependencies?.["@aws-sdk/s3-request-presigner"]).toBeDefined();
   });
 });

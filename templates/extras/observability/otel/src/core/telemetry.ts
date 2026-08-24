@@ -1,6 +1,7 @@
 import { trace, metrics, type Tracer, type Meter } from "@opentelemetry/api";
+import { env } from "./env-validation.js";
 
-const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || "hono-service";
+const SERVICE_NAME = env.OTEL_SERVICE_NAME;
 
 export const tracer: Tracer = trace.getTracer(SERVICE_NAME);
 export const meter: Meter = metrics.getMeter(SERVICE_NAME);

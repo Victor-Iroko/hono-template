@@ -1,8 +1,9 @@
 import * as Sentry from "@sentry/node";
 import type { MiddlewareHandler } from "hono";
+import { env } from "./env-validation.js";
 
 export const sentryMiddleware: MiddlewareHandler = async (c, next) => {
-  if (!process.env.SENTRY_DSN) {
+  if (!env.SENTRY_DSN) {
     return await next();
   }
 

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ofetch, type $Fetch } from "ofetch";
+import { env } from "../../../core/env-validation.js";
 import type {
   AccountLookupResponse,
   ChargeCardRequest,
@@ -15,7 +16,7 @@ const BASE_URL = "https://api.paystack.co";
 let fetchClient: $Fetch | null = null;
 
 function getPaystackSecretKey(): string {
-  return process.env.PAYSTACK_SECRET_KEY || "sk_test_replace_with_your_paystack_secret";
+  return env.PAYSTACK_SECRET_KEY;
 }
 
 export function getPaystackClient(): $Fetch {

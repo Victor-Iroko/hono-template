@@ -39,6 +39,14 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
 
     await injectAtMarker(
       ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  BETTER_AUTH_SECRET: z.string(),
+  BETTER_AUTH_URL: z.string().default("http://localhost:3000"),`
+    );
+
+    await injectAtMarker(
+      ctx.projectDir,
       "src/api/v1/router.ts",
       "// [INSTALLER:V1_IMPORTS]",
       'import { authRouter } from "./auth/router.js";'
@@ -63,18 +71,30 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
     await appendEnvVars(ctx.projectDir, {
       env: {
         ACCESS_TOKEN_SECRET_KEY: "super-secret-access-token-jwt-key-replace-in-production-12345",
-        JWT_REFRESH_SECRET: "super-secret-refresh-token-key-replace-in-production-12345",
+        ACCESS_TOKEN_EXPIRE_MINUTES: "15",
+        SESSION_EXPIRE_DAYS: "7",
       },
       example: {
         ACCESS_TOKEN_SECRET_KEY: "your-jwt-secret-here",
-        JWT_REFRESH_SECRET: "your-jwt-refresh-secret-here",
+        ACCESS_TOKEN_EXPIRE_MINUTES: "15",
+        SESSION_EXPIRE_DAYS: "7",
       },
       test: {
         ACCESS_TOKEN_SECRET_KEY: "test-jwt-secret-12345",
-        JWT_REFRESH_SECRET: "test-jwt-refresh-secret-12345",
+        ACCESS_TOKEN_EXPIRE_MINUTES: "15",
+        SESSION_EXPIRE_DAYS: "7",
       },
-      comments: ["JWT Authentication Secrets"],
+      comments: ["JWT & Stateful Session Authentication Configuration"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  ACCESS_TOKEN_SECRET_KEY: z.string(),
+  ACCESS_TOKEN_EXPIRE_MINUTES: z.coerce.number().default(15),
+  SESSION_EXPIRE_DAYS: z.coerce.number().default(7),`
+    );
 
     await injectAtMarker(
       ctx.projectDir,

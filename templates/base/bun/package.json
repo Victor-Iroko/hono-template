@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/serve-local.ts",
-    "start": "bun src/serve.ts",
+    "build": "bun build ./src/serve.ts --outdir ./dist --target bun",
+    "start": "bun dist/serve.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

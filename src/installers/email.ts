@@ -4,6 +4,8 @@ import { copyTemplateDir } from "../utils/fs.js";
 import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
 
+import { injectAtMarker } from "../utils/injector.js";
+
 export async function installEmail(ctx: InstallerContext): Promise<void> {
   const { email } = ctx.options;
   if (email === "none") {
@@ -31,6 +33,14 @@ export async function installEmail(ctx: InstallerContext): Promise<void> {
       },
       comments: ["Resend Email API Configuration"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  RESEND_API_KEY: z.string(),
+  EMAIL_FROM: z.string().default("onboarding@resend.dev"),`
+    );
   } else if (email === "nodemailer") {
     const sourceDir = join(ctx.templateRoot, "extras", "email", "nodemailer");
     await copyTemplateDir(sourceDir, ctx.projectDir);
@@ -61,5 +71,17 @@ export async function installEmail(ctx: InstallerContext): Promise<void> {
       },
       comments: ["SMTP Email Configuration (e.g. Mailpit/Mailhog in dev)"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  SMTP_HOST: z.string().default("localhost"),
+  SMTP_PORT: z.coerce.number().default(1025),
+  SMTP_SECURE: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  EMAIL_FROM: z.string().default("noreply@example.com"),`
+    );
   }
 }

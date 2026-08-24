@@ -33,7 +33,7 @@ export async function runInstallers(ctx: InstallerContext): Promise<void> {
   // 7. Email Service (Resend / Nodemailer)
   await installEmail(ctx);
 
-  // 8. File Storage (S3 / RustFS)
+  // 8. File Storage (S3 / Floci)
   await installStorage(ctx);
 
   // 9. Integrations (Paystack, Firebase Google Auth, QStash)

@@ -1,52 +1,52 @@
+import { createHash, randomBytes } from "node:crypto";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import type { Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import { env } from "../../../core/env-validation.js";
 import { unauthorizedError } from "../../../core/errors.js";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.ACCESS_TOKEN_SECRET_KEY || process.env.JWT_SECRET || "super-secret-jwt-key-replace-in-production-12345"
-);
-const REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET || "super-secret-refresh-key-replace-in-production-12345"
-);
+const JWT_SECRET = new TextEncoder().encode(env.ACCESS_TOKEN_SECRET_KEY);
 
-export interface JwtPayload extends JWTPayload {
+export interface AccessTokenPayload extends JWTPayload {
   userId: string;
   email: string;
   role?: string;
+  sid: string;
 }
 
-export async function signAccessToken(payload: JwtPayload): Promise<string> {
-  return await new SignJWT(payload)
+export function generateOpaqueRefreshToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
+export function hashRefreshToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function signAccessToken(payload: {
+  userId: string;
+  email: string;
+  role?: string;
+  sid: string;
+}): Promise<string> {
+  return await new SignJWT({
+    userId: payload.userId,
+    email: payload.email,
+    role: payload.role,
+    sid: payload.sid,
+  })
     .setProtectedHeader({ alg: "HS256" })
+    .setSubject(payload.userId)
     .setIssuedAt()
-    .setExpirationTime("15m")
+    .setExpirationTime(`${env.ACCESS_TOKEN_EXPIRE_MINUTES}m`)
     .sign(JWT_SECRET);
 }
 
-export async function signRefreshToken(payload: JwtPayload): Promise<string> {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(REFRESH_SECRET);
-}
-
-export async function verifyAccessToken(token: string): Promise<JwtPayload> {
+export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as JwtPayload;
-  } catch (err) {
+    return payload as AccessTokenPayload;
+  } catch (err: unknown) {
     throw unauthorizedError("Invalid or expired access token", { cause: err });
-  }
-}
-
-export async function verifyRefreshToken(token: string): Promise<JwtPayload> {
-  try {
-    const { payload } = await jwtVerify(token, REFRESH_SECRET);
-    return payload as JwtPayload;
-  } catch (err) {
-    throw unauthorizedError("Invalid or expired refresh token", { cause: err });
   }
 }
 
@@ -61,9 +61,9 @@ export function extractBearerToken(c: Context): string | undefined {
 export function setAuthCookies(c: Context, accessToken: string): void {
   setCookie(c, "access_token", accessToken, {
     httpOnly: true,
-    secure: process.env.APP_ENV === "production",
+    secure: env.APP_ENV === "production",
     sameSite: "Lax",
-    maxAge: 60 * 15,
+    maxAge: 60 * env.ACCESS_TOKEN_EXPIRE_MINUTES,
   });
 }
 

@@ -1,5 +1,5 @@
-import { access, copyFile, cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { access, cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 
 export async function fileExists(path: string): Promise<boolean> {
   try {

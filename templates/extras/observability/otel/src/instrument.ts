@@ -3,6 +3,7 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import { env } from "./core/env-validation.js";
 
 let _isInitialized = false;
 let sdk: NodeSDK | null = null;
@@ -11,18 +12,18 @@ export function initializeInstrumentation(): void {
   if (_isInitialized) return;
 
   const traceExporter = new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || "http://localhost:4318/v1/traces",
+    url: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
   });
 
   const metricReader = new PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || "http://localhost:4318/v1/metrics",
+      url: env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
     }),
     exportIntervalMillis: 60000,
   });
 
   sdk = new NodeSDK({
-    serviceName: process.env.OTEL_SERVICE_NAME || "api",
+    serviceName: env.OTEL_SERVICE_NAME,
     traceExporter,
     metricReader,
     instrumentations: [getNodeAutoInstrumentations()],

@@ -1,4 +1,4 @@
-import { validateEnv } from "./core/env-validation.js";
+import { validateEnv, env } from "./core/env-validation.js";
 
 validateEnv();
 
@@ -11,7 +11,7 @@ initializeInstrumentation();
 
 const { default: app } = await import("./index.js");
 
-const port = Number(process.env.PORT) || 3000;
+const port = env.PORT;
 
 export default {
   port,

@@ -4,6 +4,8 @@ import { copyTemplateDir } from "../utils/fs.js";
 import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
 
+import { injectAtMarker } from "../utils/injector.js";
+
 export async function installRedis(ctx: InstallerContext): Promise<void> {
   const { redis } = ctx.options;
   if (redis === "none") {
@@ -36,6 +38,14 @@ export async function installRedis(ctx: InstallerContext): Promise<void> {
       },
       comments: ["Upstash Redis & Rate Limiting"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  UPSTASH_REDIS_REST_URL: z.string(),
+  UPSTASH_REDIS_REST_TOKEN: z.string(),`
+    );
   } else if (redis === "ioredis") {
     const sourceDir = join(ctx.templateRoot, "extras", "redis", "ioredis");
     await copyTemplateDir(sourceDir, ctx.projectDir);
@@ -61,5 +71,12 @@ export async function installRedis(ctx: InstallerContext): Promise<void> {
       },
       comments: ["Redis Connection"],
     });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  REDIS_URL: z.string(),`
+    );
   }
 }

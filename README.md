@@ -40,7 +40,7 @@ Follow the interactive prompts to choose your runtime, database, auth strategy, 
 | **Social / Google Auth** | **Firebase Admin** (Google ID token verification for custom-jwt) |
 | **Background Queues** | **Upstash QStash** (Serverless message queues & event publishing) |
 | **Code Quality & CI** | **Oxlint + Oxfmt** (Ultra-fast Rust tooling), **Vitest**, **Husky pre-commit**, **GitHub Actions CI** |
-| **Docker Compose** | Dynamically composed local dev services (PostgreSQL, Redis, RustFS S3, Mailpit) |
+| **Docker Compose** | Dynamically composed local dev services (PostgreSQL, Redis Stack, Upstash Proxy, Floci S3, Mailpit, Cloudflare Tunnel) |
 
 ---
 

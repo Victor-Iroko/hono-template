@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
+import { env } from "../core/env-validation.js";
 import { unauthorizedError, internalError } from "../core/errors.js";
 
 export interface FirebaseUser {
@@ -21,7 +22,7 @@ export function getFirebaseAdminApp(): App {
     return firebaseApp;
   }
 
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const serviceAccountKey = env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (serviceAccountKey) {
     try {
       const parsed = JSON.parse(serviceAccountKey) as {
@@ -43,9 +44,9 @@ export function getFirebaseAdminApp(): App {
     }
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const projectId = env.FIREBASE_PROJECT_ID;
+  const clientEmail = env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = env.FIREBASE_PRIVATE_KEY;
 
   if (projectId && clientEmail && privateKey) {
     const formattedPrivateKey = privateKey.replace(/\\n/g, "\n");

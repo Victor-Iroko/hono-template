@@ -1,8 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "hono-setup",
   "version": "1.0.0",
   "private": true,
-  "description": "Apply the hono-template setup to a fresh Hono project",
+  "description": "An interactive CLI generator to scaffold modern, production-ready Hono applications",
   "bin": {
     "hono-setup": "src/index.ts",
     "create-hono-stack": "src/index.ts"
@@ -17,7 +18,10 @@
   "devDependencies": {
     "@types/bun": "^1.4.0",
     "@types/node": "^20.11.17",
-    "typescript": "^5.8.3"
+    "hono": "^4.13.4",
+    "jose": "^6.2.10",
+    "typescript": "^5.8.3",
+    "zod": "^4.4.3"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",

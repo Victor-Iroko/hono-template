@@ -1,62 +1,72 @@
 import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-  type JwtPayload,
-} from "./tokens.js";
+  upsertUserSession,
+  rotateUserSession,
+  revokeUserSession,
+  revokeUserSessionByToken,
+  revokeAllUserSessions,
+  getSessionByRefreshToken,
+  type ClientMeta,
+  type SessionUser,
+} from "./session.js";
 import type { LoginInput, RegisterInput } from "./schemas.js";
+import { unauthorizedError } from "../../../core/errors.js";
 
-export async function loginUser(input: LoginInput) {
-  // Demo user lookup (in real app, query db and verify hashed password)
-  const user = {
-    id: crypto.randomUUID(),
+export async function loginUser(input: LoginInput, meta?: ClientMeta) {
+  // Demo user lookup (in a real application, query db and verify hashed password)
+  const user: SessionUser = {
+    id: "demo-user-id-12345",
     email: input.email,
     name: "Demo User",
     role: "user",
   };
 
-  const payload: JwtPayload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
+  const { tokens } = await upsertUserSession(user, meta);
 
-  const accessToken = await signAccessToken(payload);
-  const refreshToken = await signRefreshToken(payload);
-
-  return { user, tokens: { accessToken, refreshToken } };
+  return { user, tokens };
 }
 
-export async function registerUser(input: RegisterInput) {
-  const user = {
+export async function registerUser(input: RegisterInput, meta?: ClientMeta) {
+  // Demo user creation (in a real application, hash password and insert into db)
+  const user: SessionUser = {
     id: crypto.randomUUID(),
     email: input.email,
     name: input.name ?? "New User",
     role: "user",
   };
 
-  const payload: JwtPayload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
+  const { tokens } = await upsertUserSession(user, meta);
 
-  const accessToken = await signAccessToken(payload);
-  const refreshToken = await signRefreshToken(payload);
-
-  return { user, tokens: { accessToken, refreshToken } };
+  return { user, tokens };
 }
 
-export async function refreshTokens(refreshToken: string) {
-  const payload = await verifyRefreshToken(refreshToken);
-  const newPayload: JwtPayload = {
-    userId: payload.userId,
-    email: payload.email,
-    role: payload.role,
+export async function refreshTokens(refreshToken: string, meta?: ClientMeta) {
+  const session = getSessionByRefreshToken(refreshToken);
+  if (!session) {
+    throw unauthorizedError("Invalid or expired refresh token");
+  }
+
+  // Demo user retrieval associated with session
+  const user: SessionUser = {
+    id: session.userId,
+    email: "demo@example.com",
+    role: "user",
   };
 
-  const accessToken = await signAccessToken(newPayload);
-  const newRefreshToken = await signRefreshToken(newPayload);
+  const { tokens } = await rotateUserSession(refreshToken, user, meta);
 
-  return { tokens: { accessToken, refreshToken: newRefreshToken } };
+  return { user, tokens };
+}
+
+export async function logoutUser(sessionId?: string, refreshToken?: string): Promise<boolean> {
+  if (sessionId) {
+    return revokeUserSession(sessionId);
+  }
+  if (refreshToken) {
+    return revokeUserSessionByToken(refreshToken);
+  }
+  return false;
+}
+
+export async function logoutAllDevices(userId: string): Promise<number> {
+  return revokeAllUserSessions(userId);
 }

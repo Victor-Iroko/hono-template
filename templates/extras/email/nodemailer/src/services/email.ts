@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { env } from "../core/env-validation.js";
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -13,13 +14,13 @@ let transporterInstance: Transporter | null = null;
 export function getTransporter(): Transporter {
   if (!transporterInstance) {
     const smtpConfig = {
-      host: process.env.SMTP_HOST || "localhost",
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: process.env.SMTP_USER
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE === "true",
+      auth: env.SMTP_USER
         ? {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASSWORD || "",
+            user: env.SMTP_USER,
+            pass: env.SMTP_PASSWORD || "",
           }
         : undefined,
     };
@@ -30,7 +31,7 @@ export function getTransporter(): Transporter {
 
 export const emailService = {
   send: async (options: SendEmailOptions): Promise<{ messageId: string }> => {
-    const defaultFrom = process.env.EMAIL_FROM || "noreply@example.com";
+    const defaultFrom = env.EMAIL_FROM;
     const info = await getTransporter().sendMail({
       from: options.from || defaultFrom,
       to: Array.isArray(options.to) ? options.to.join(", ") : options.to,

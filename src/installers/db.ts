@@ -4,6 +4,8 @@ import { copyTemplateDir } from "../utils/fs.js";
 import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
 
+import { injectAtMarker } from "../utils/injector.js";
+
 export async function installDb(ctx: InstallerContext): Promise<void> {
   const { db } = ctx.options;
   if (db === "none") {
@@ -63,4 +65,11 @@ export async function installDb(ctx: InstallerContext): Promise<void> {
     test: { DATABASE_URL: databaseTestUrl },
     comments: ["Database Configuration"],
   });
+
+  await injectAtMarker(
+    ctx.projectDir,
+    "src/core/env-schema.ts",
+    "// [INSTALLER:ENV_SCHEMA]",
+    `  DATABASE_URL: z.string(),`
+  );
 }

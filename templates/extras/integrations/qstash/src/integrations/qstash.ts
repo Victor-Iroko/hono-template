@@ -1,10 +1,11 @@
 import { Client } from "@upstash/qstash";
+import { env } from "../core/env-validation.js";
 
 let qstashClient: Client | null = null;
 
 export function getQStash(): Client {
   if (!qstashClient) {
-    const token = process.env.QSTASH_TOKEN || "mock_qstash_token";
+    const token = env.QSTASH_TOKEN;
     qstashClient = new Client({ token });
   }
   return qstashClient;
