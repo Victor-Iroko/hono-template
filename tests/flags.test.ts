@@ -46,4 +46,16 @@ describe("CLI Flags Parser", () => {
     expect(flags.install).toBe(false);
     expect(flags.nonInteractive).toBe(true);
   });
+
+  it("should parse queue flags correctly", () => {
+    const { flags: flagsBullmq } = parseCliFlags(["node", "index.js", "app", "--queue", "bullmq"]);
+    expect(flagsBullmq.queue).toBe("bullmq");
+
+    const { flags: flagsBullmqBool } = parseCliFlags(["node", "index.js", "app", "--bullmq"]);
+    expect(flagsBullmqBool.queue).toBe("bullmq");
+
+    const { flags: flagsQStash } = parseCliFlags(["node", "index.js", "app", "--qstash"]);
+    expect(flagsQStash.queue).toBe("qstash");
+  });
 });
+

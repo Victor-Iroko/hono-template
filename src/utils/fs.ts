@@ -35,3 +35,12 @@ export async function copyTemplateDir(sourceDir: string, targetDir: string): Pro
   await ensureDir(targetDir);
   await cp(sourceDir, targetDir, { recursive: true, force: true });
 }
+
+export async function copyTemplateFile(sourceFile: string, targetFile: string): Promise<void> {
+  const exists = await fileExists(sourceFile);
+  if (!exists) {
+    return;
+  }
+  await ensureDir(dirname(targetFile));
+  await cp(sourceFile, targetFile, { force: true });
+}

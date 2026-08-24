@@ -1,10 +1,8 @@
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import * as models from "../db/models/index.js";
-import { relations } from "../db/relations.js";
+import * as schema from "../db/schema/index.js";
 import { getEnv } from "./env-validation.js";
 
-export const schema = { ...models, ...relations };
 export type DatabaseInstance = BetterSQLite3Database<typeof schema>;
 export type Database = DatabaseInstance;
 export type DrizzleTx = Parameters<Parameters<DatabaseInstance["transaction"]>[0]>[0];

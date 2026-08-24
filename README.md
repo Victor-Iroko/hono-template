@@ -29,8 +29,7 @@ Follow the interactive prompts to choose your runtime, database, auth strategy, 
 | Feature Domain | Supported Options |
 | :--- | :--- |
 | **Runtime Target** | **Bun** (Native fast runtime), **Node.js** (`@hono/node-server`), **Cloudflare Workers** |
-| **Database & ORM** | **Drizzle ORM** (PostgreSQL, SQLite / LibSQL, MySQL) |
-| **Authentication** | **Better Auth** (Session & email/password), **Custom JWT** (Access + Refresh token rotation), None |
+| **Database & ORM** | **Drizzle ORM** (PostgreSQL, SQLite / LibSQL,| **Authentication** | **Better Auth** (CLI schema generation & OTP verification), **Custom JWT** (Stateful refresh token rotation, OTP email verification & explicit Drizzle schemas), None |
 | **Cache & Rate Limiter**| **Upstash Redis** (`@upstash/redis` + `@upstash/ratelimit`), **Standard Redis** (`ioredis`), None |
 | **API Docs & SDKs** | **Scalar API Reference** (`/reference` UI) + **Fern SDK** generation configs |
 | **Observability** | **OpenTelemetry** (OTel distributed tracing & metrics), **Sentry** error monitoring, Pino logging |
@@ -38,7 +37,7 @@ Follow the interactive prompts to choose your runtime, database, auth strategy, 
 | **File Storage & Media** | **S3 Object Storage** (`@aws-sdk/client-s3`), **Cloudinary** (Image CDN, transforms, presigned uploads) |
 | **Payments** | **Paystack** (Transactions, card charges, bank transfers, webhooks) |
 | **Social / Google Auth** | **Firebase Admin** (Google ID token verification for custom-jwt) |
-| **Background Queues** | **Upstash QStash** (Serverless message queues & event publishing) |
+| **Background Queues** | **BullMQ** (Redis queue & background worker), **Upstash QStash** (Serverless message queues & event publishing) |
 | **Code Quality & CI** | **Oxlint + Oxfmt** (Ultra-fast Rust tooling), **Vitest**, **Husky pre-commit**, **GitHub Actions CI** |
 | **Docker Compose** | Dynamically composed local dev services (PostgreSQL, Redis Stack, Upstash Proxy, Floci S3, Mailpit, Cloudflare Tunnel) |
 
@@ -59,7 +58,7 @@ bunx github:Victor-Iroko/hono-template my-app \
   --email resend \
   --storage cloudinary \
   --payments paystack \
-  --qstash \
+  --queue bullmq \
   --linter oxlint \
   --non-interactive
 ```
@@ -78,6 +77,8 @@ bunx github:Victor-Iroko/hono-template my-app \
 | `--email <email>` | `resend` \| `nodemailer` \| `none` | Email service (Resend API or Nodemailer SMTP) |
 | `--storage <storage>` | `s3` \| `cloudinary` \| `none` | File storage provider (S3 or Cloudinary) |
 | `--payments <payments>` | `paystack` \| `none` | Paystack payment gateway integration |
+| `--queue <queue>` | `bullmq` \| `qstash` \| `none` | Background queue & job processor |
+| `--bullmq` | boolean | Enable BullMQ background queues |
 | `--qstash` | boolean | Enable Upstash QStash background jobs |
 | `--linter <linter>` | `oxlint` \| `none` | Linter and formatter tooling |
 | `--git` / `--no-git` | boolean | Initialize Git repository and Husky hooks |
@@ -108,14 +109,25 @@ my-app/
 │   ├── api/
 │   │   └── v1/
 │   │       ├── router.ts        # Base v1 router
-│   │       └── auth.ts          # Auth routes (/login, /refresh, /me or Better Auth handler)
+│   │       └── auth/            # Auth routes (/login, /register, /verify-otp, /resend-otp, /me)
 │   ├── db/
 │   │   ├── client.ts            # Drizzle ORM client instance
 │   │   ├── seed.ts              # Database seed script
 │   │   └── schema/              # Drizzle table schemas and relations
+│   ├── queues/                  # BullMQ queues (email.queue.ts)
+│   ├── jobs/                    # BullMQ background workers (email.worker.ts)
 │   ├── services/
-│   │   ├── email.ts             # Nodemailer email sender
+│   │   ├── email.ts             # Email sender service
 │   │   └── storage.ts           # S3 presigned URL client
+│   └── middleware/
+│       ├── request-context.middleware.ts # Request ID and timing middleware
+│       └── auth.middleware.ts            # Authentication guard middleware
+├── docker-compose.yml           # Local dev services (Postgres, Redis, RustFS, Mailpit)
+├── drizzle.config.ts            # Drizzle Kit migration configuration
+├── vitest.config.ts             # Vitest test configuration
+├── .oxlintrc.json               # Oxlint configuration
+└── .env.example                 # Documented environment variables
+```�   └── storage.ts           # S3 presigned URL client
 │   └── middleware/
 │       ├── request-context.middleware.ts # Request ID and timing middleware
 │       └── auth.ts                       # Authentication guard middleware

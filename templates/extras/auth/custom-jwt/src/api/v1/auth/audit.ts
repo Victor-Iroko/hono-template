@@ -6,6 +6,8 @@ export type SecurityAuditAction =
   | "session_revoked"
   | "session_replaced"
   | "token_reuse_detected"
+  | "otp_generated"
+  | "email_verified"
   | "password_changed"
   | "email_changed"
   | "account_deleted";

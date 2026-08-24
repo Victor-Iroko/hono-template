@@ -16,6 +16,8 @@ export type StorageChoice = "s3" | "cloudinary" | "none";
 
 export type PaymentChoice = "paystack" | "none";
 
+export type QueueChoice = "bullmq" | "qstash" | "none";
+
 export type LinterChoice = "oxlint" | "none";
 
 export type PackageManagerChoice = "bun" | "npm" | "pnpm" | "yarn";
@@ -33,7 +35,8 @@ export interface ProjectOptions {
   email: EmailChoice;
   storage: StorageChoice;
   payments: PaymentChoice;
-  qstash: boolean;
+  queue: QueueChoice;
+  qstash?: boolean;
   linter: LinterChoice;
   git: boolean;
   installDeps: boolean;
@@ -52,6 +55,8 @@ export interface CliFlags {
   email?: EmailChoice;
   storage?: StorageChoice;
   payments?: PaymentChoice;
+  queue?: QueueChoice;
+  bullmq?: boolean;
   qstash?: boolean;
   linter?: LinterChoice;
   git?: boolean;
@@ -61,3 +66,4 @@ export interface CliFlags {
   dryRun?: boolean;
   force?: boolean;
 }
+

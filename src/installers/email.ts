@@ -1,17 +1,16 @@
 import { join } from "node:path";
 import type { InstallerContext } from "./types.js";
-import { copyTemplateDir } from "../utils/fs.js";
+import { copyTemplateDir, copyTemplateFile } from "../utils/fs.js";
 import { mergePackageJson } from "../utils/pkg-json.js";
 import { appendEnvVars } from "../utils/env.js";
-
 import { injectAtMarker } from "../utils/injector.js";
 
 export async function installEmail(ctx: InstallerContext): Promise<void> {
-  const { email } = ctx.options;
-  if (email === "none") {
-    return;
-  }
+  const { email, queue, qstash } = ctx.options;
+  const isBullMQ = queue === "bullmq";
+  const isQStash = queue === "qstash" || (queue === undefined && qstash);
 
+  // 1. Direct Email Provider (Resend / Nodemailer / Mock fallback)
   if (email === "resend") {
     const sourceDir = join(ctx.templateRoot, "extras", "email", "resend");
     await copyTemplateDir(sourceDir, ctx.projectDir);
@@ -83,5 +82,30 @@ export async function installEmail(ctx: InstallerContext): Promise<void> {
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().default("noreply@example.com"),`
     );
+  } else {
+    // email === "none" -> mock email provider
+    const mockDir = join(ctx.templateRoot, "extras", "email", "mock");
+    await copyTemplateDir(mockDir, ctx.projectDir);
   }
+
+  // 2. Email Templates & Dispatcher (Direct / BullMQ / QStash)
+  let templatesVariant = "direct";
+  if (isBullMQ) {
+    templatesVariant = "bullmq";
+  } else if (isQStash) {
+    templatesVariant = "qstash";
+  }
+
+  const templatesSource = join(
+    ctx.templateRoot,
+    "extras",
+    "email",
+    templatesVariant,
+    "src",
+    "integrations",
+    "email",
+    "email-templates.ts"
+  );
+  const templatesTarget = join(ctx.projectDir, "src", "integrations", "email", "email-templates.ts");
+  await copyTemplateFile(templatesSource, templatesTarget);
 }

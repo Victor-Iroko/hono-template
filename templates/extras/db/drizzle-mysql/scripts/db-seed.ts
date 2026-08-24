@@ -1,17 +1,19 @@
 import "dotenv/config";
 import { getDb, getPool } from "../src/core/db.js";
-import { users } from "../src/db/models/index.js";
+import * as schema from "../src/db/schema/index.js";
 
 async function main() {
-  console.log("🌱 Seeding database...");
-  await getDb()
-    .insert(users)
-    .values([
-      { id: crypto.randomUUID(), email: "alice@example.com", name: "Alice Smith" },
-      { id: crypto.randomUUID(), email: "bob@example.com", name: "Bob Jones" },
-    ])
-    .onDuplicateKeyUpdate({ set: { id: users.id } });
-  console.log("✅ Database seeded successfully.");
+  console.log("🌱 Seeding MySQL database...");
+  if ("users" in schema && typeof (schema as Record<string, unknown>).users === "object") {
+    const { users } = schema as { users: Parameters<ReturnType<typeof getDb>["insert"]>[0] };
+    await getDb()
+      .insert(users)
+      .values([
+        { id: "seed-user-1", email: "alice@example.com", name: "Alice Smith" },
+        { id: "seed-user-2", email: "bob@example.com", name: "Bob Jones" },
+      ]);
+  }
+  console.log("✅ MySQL database seeded successfully.");
   await getPool().end();
 }
 

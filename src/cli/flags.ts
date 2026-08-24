@@ -18,6 +18,8 @@ export function parseCliFlags(argv: string[]): { projectName?: string; flags: Cl
     .option("--email <email>", "Email service (resend, nodemailer, none)")
     .option("--storage <storage>", "File storage provider (s3, cloudinary, none)")
     .option("--payments <payments>", "Payment gateway integration (paystack, none)")
+    .option("--queue <queue>", "Background queue & job processing (bullmq, qstash, none)")
+    .option("--bullmq", "Enable BullMQ background message queues", false)
     .option("--qstash", "Enable Upstash QStash message queues and background jobs", false)
     .option("--linter <linter>", "Linter and formatter (oxlint, none)")
     .option("--git", "Initialize git repository and hooks", true)
@@ -35,6 +37,12 @@ export function parseCliFlags(argv: string[]): { projectName?: string; flags: Cl
   const projectName = program.args[0];
   const opts = program.opts();
 
+  let queue = opts.queue;
+  if (!queue) {
+    if (opts.bullmq) queue = "bullmq";
+    else if (opts.qstash) queue = "qstash";
+  }
+
   const flags: CliFlags = {
     runtime: opts.runtime,
     db: opts.db,
@@ -46,6 +54,8 @@ export function parseCliFlags(argv: string[]): { projectName?: string; flags: Cl
     email: opts.email,
     storage: opts.storage,
     payments: opts.payments,
+    queue,
+    bullmq: opts.bullmq,
     qstash: opts.qstash,
     linter: opts.linter,
     git: opts.git,

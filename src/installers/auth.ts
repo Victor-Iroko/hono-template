@@ -19,20 +19,33 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       dependencies: {
         "better-auth": "^1.1.21",
       },
+      devDependencies: {
+        "@better-auth/cli": "^1.1.21",
+      },
+      scripts: {
+        "auth:generate": "better-auth generate",
+        "auth:migrate": "better-auth migrate",
+      },
     });
 
     await appendEnvVars(ctx.projectDir, {
       env: {
         BETTER_AUTH_SECRET: "replace-with-a-random-secret-key-at-least-32-chars-long",
         BETTER_AUTH_URL: "http://localhost:3000",
+        AUTH_SESSION_EXPIRES_IN: "604800",
+        AUTH_SESSION_UPDATE_AGE: "86400",
       },
       example: {
         BETTER_AUTH_SECRET: "your-secret-key-here",
         BETTER_AUTH_URL: "http://localhost:3000",
+        AUTH_SESSION_EXPIRES_IN: "604800",
+        AUTH_SESSION_UPDATE_AGE: "86400",
       },
       test: {
         BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-1234",
         BETTER_AUTH_URL: "http://localhost:3000",
+        AUTH_SESSION_EXPIRES_IN: "604800",
+        AUTH_SESSION_UPDATE_AGE: "86400",
       },
       comments: ["Better Auth Configuration"],
     });
@@ -42,14 +55,16 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       "src/core/env-schema.ts",
       "// [INSTALLER:ENV_SCHEMA]",
       `  BETTER_AUTH_SECRET: z.string(),
-  BETTER_AUTH_URL: z.string().default("http://localhost:3000"),`
+  BETTER_AUTH_URL: z.string().default("http://localhost:3000"),
+  AUTH_SESSION_EXPIRES_IN: z.coerce.number().default(604800),
+  AUTH_SESSION_UPDATE_AGE: z.coerce.number().default(86400),`
     );
 
     await injectAtMarker(
       ctx.projectDir,
       "src/index.ts",
       "// [INSTALLER:IMPORTS]",
-      'import type { Auth } from "./core/auth.js";'
+      'import type { Auth } from "./utils/auth.js";'
     );
 
     await replaceMarkerBlock(
@@ -76,9 +91,22 @@ export async function installAuth(ctx: InstallerContext): Promise<void> {
       "// [INSTALLER:V1_ROUTES]",
       'v1Router.route("/auth", authRouter);'
     );
+    // If database is configured, copy dialect-specific better-auth schema
+    if (ctx.options.db !== "none") {
+      const dbDirName = ctx.options.db === "postgres" ? "drizzle-pg" : ctx.options.db === "sqlite" ? "drizzle-sqlite" : "drizzle-mysql";
+      const schemaDir = join(ctx.templateRoot, "extras", "auth", "schemas", "better-auth", dbDirName);
+      await copyTemplateDir(schemaDir, ctx.projectDir);
+    }
   } else if (auth === "custom-jwt") {
     const sourceDir = join(ctx.templateRoot, "extras", "auth", "custom-jwt");
     await copyTemplateDir(sourceDir, ctx.projectDir);
+
+    // If database is configured, copy dialect-specific custom-jwt schema
+    if (ctx.options.db !== "none") {
+      const dbDirName = ctx.options.db === "postgres" ? "drizzle-pg" : ctx.options.db === "sqlite" ? "drizzle-sqlite" : "drizzle-mysql";
+      const schemaDir = join(ctx.templateRoot, "extras", "auth", "schemas", "custom-jwt", dbDirName);
+      await copyTemplateDir(schemaDir, ctx.projectDir);
+    }
 
     await mergePackageJson(ctx.projectDir, {
       dependencies: {

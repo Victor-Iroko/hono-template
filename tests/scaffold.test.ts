@@ -33,6 +33,7 @@ describe("End-to-End Scaffolding Pipeline", () => {
         email: "resend",
         storage: "s3",
         payments: "paystack",
+        queue: "qstash",
         qstash: true,
         linter: "oxlint",
         git: true,
@@ -58,17 +59,16 @@ describe("End-to-End Scaffolding Pipeline", () => {
     // Check DB files & scripts
     expect(await fileExists(join(tempDir, "drizzle.config.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/core/db.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/db/models/users.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/db/models/sessions.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/db/models/audit.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/db/models/index.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/db/relations.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/db/enums.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/schema/auth.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/schema/index.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/models"))).toBe(false);
+    expect(await fileExists(join(tempDir, "src/db/schema/sessions.ts"))).toBe(false);
+    expect(await fileExists(join(tempDir, "src/db/schema/audit.ts"))).toBe(false);
     expect(await fileExists(join(tempDir, "scripts/db-seed.ts"))).toBe(true);
 
     // Check Auth files
-    expect(await fileExists(join(tempDir, "src/core/auth.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/middleware/auth.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/utils/auth.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/middleware/auth.middleware.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/router.ts"))).toBe(true);
 
     // Check Redis & Rate limit
@@ -85,13 +85,16 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(await fileExists(join(tempDir, "scripts/generate-openapi.ts"))).toBe(true);
 
     // Check Email & Storage
-    expect(await fileExists(join(tempDir, "src/services/email.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/integrations/email/email.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/integrations/email/email-templates.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/services/storage.ts"))).toBe(true);
 
     // Check Paystack & QStash Integrations
     expect(await fileExists(join(tempDir, "src/integrations/payments/paystack.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/payments.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/integrations/qstash.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/api/v1/jobs/router.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/api/v1/jobs/service.ts"))).toBe(true);
 
     // Check Docker Compose
     expect(await fileExists(join(tempDir, "docker-compose.yml"))).toBe(true);
@@ -111,12 +114,14 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(await fileExists(join(tempDir, "tests/api.test.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "vitest.config.ts"))).toBe(true);
 
-    // Check package.json dependencies
+    // Check package.json dependencies & scripts
     const pkg = await readPackageJson(tempDir);
     expect(pkg.dependencies?.["hono"]).toBeDefined();
     expect(pkg.dependencies?.["drizzle-orm"]).toBeDefined();
     expect(pkg.dependencies?.["postgres"]).toBeDefined();
     expect(pkg.dependencies?.["better-auth"]).toBeDefined();
+    expect(pkg.devDependencies?.["@better-auth/cli"]).toBeDefined();
+    expect(pkg.scripts?.["auth:generate"]).toBeDefined();
     expect(pkg.dependencies?.["@upstash/redis"]).toBeDefined();
     expect(pkg.dependencies?.["@opentelemetry/sdk-node"]).toBeDefined();
     expect(pkg.dependencies?.["@scalar/hono-api-reference"]).toBeDefined();
@@ -126,6 +131,11 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(pkg.dependencies?.["@upstash/qstash"]).toBeDefined();
     expect(pkg.devDependencies?.["oxlint"]).toBeDefined();
     expect(pkg.devDependencies?.["vitest"]).toBeDefined();
+
+    // Check env schema contains session expiration and update age
+    const envSchemaContent = await readFileSafe(join(tempDir, "src/core/env-schema.ts"));
+    expect(envSchemaContent).toContain("AUTH_SESSION_EXPIRES_IN");
+    expect(envSchemaContent).toContain("AUTH_SESSION_UPDATE_AGE");
 
     // Check Bun S3 storage service uses native Bun.s3
     const storageServiceContent = await readFileSafe(join(tempDir, "src/services/storage.ts"));
@@ -140,7 +150,7 @@ describe("End-to-End Scaffolding Pipeline", () => {
 
     const indexContent = await readFileSafe(join(tempDir, "src/index.ts"));
     expect(indexContent).toContain('app.route("/api/v1", v1Router);');
-    expect(indexContent).toContain('import type { Auth } from "./core/auth.js";');
+    expect(indexContent).toContain('import type { Auth } from "./utils/auth.js";');
     expect(indexContent).toContain('user?: Auth["$Infer"]["Session"]["user"];');
     expect(indexContent).toContain('session?: Auth["$Infer"]["Session"]["session"];');
     expect(indexContent).not.toContain("user?: unknown;");
@@ -161,6 +171,7 @@ describe("End-to-End Scaffolding Pipeline", () => {
         email: "nodemailer",
         storage: "cloudinary",
         payments: "none",
+        queue: "none",
         qstash: false,
         linter: "oxlint",
         git: false,
@@ -173,6 +184,7 @@ describe("End-to-End Scaffolding Pipeline", () => {
 
     expect(await fileExists(join(tempDir, "src/api/v1/auth/tokens.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/session.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/api/v1/auth/otp.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/audit.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/service.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/api/v1/auth/schemas.ts"))).toBe(true);
@@ -182,7 +194,16 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(await fileExists(join(tempDir, "src/integrations/storage/cloudinary.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/services/storage.ts"))).toBe(true);
     expect(await fileExists(join(tempDir, "src/core/sentry.ts"))).toBe(true);
-    expect(await fileExists(join(tempDir, "src/services/email.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/integrations/email/email.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/integrations/email/email-templates.ts"))).toBe(true);
+
+    // Check DB Custom JWT schemas
+    expect(await fileExists(join(tempDir, "src/db/schema/users.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/schema/sessions.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/schema/audit.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/schema/otp.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/schema/index.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/models"))).toBe(false);
 
     const indexContent = await readFileSafe(join(tempDir, "src/index.ts"));
     expect(indexContent).toContain('import type { AccessTokenPayload } from "./api/v1/auth/tokens.js";');
@@ -191,6 +212,8 @@ describe("End-to-End Scaffolding Pipeline", () => {
 
     const authContent = await readFileSafe(join(tempDir, "src/api/v1/auth/router.ts"));
     expect(authContent).toContain('/google');
+    expect(authContent).toContain('/verify-otp');
+    expect(authContent).toContain('/resend-otp');
 
     const pkg = await readPackageJson(tempDir);
     expect(pkg.dependencies?.["@hono/node-server"]).toBeDefined();
@@ -208,6 +231,48 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(compose).not.toContain("postgres:");
   });
 
+  it("should scaffold a Bun stack with BullMQ background queue and worker", async () => {
+    await runInstallers({
+      options: {
+        projectName: "bun-bullmq-app",
+        projectDir: tempDir,
+        runtime: "bun",
+        db: "postgres",
+        auth: "none",
+        firebaseAuth: false,
+        redis: "ioredis",
+        observability: "none",
+        docs: "none",
+        email: "none",
+        storage: "none",
+        payments: "none",
+        queue: "bullmq",
+        qstash: false,
+        linter: "none",
+        git: false,
+        installDeps: false,
+        packageManager: "bun",
+      },
+      templateRoot,
+      projectDir: tempDir,
+    });
+
+    expect(await fileExists(join(tempDir, "src/queues/email.queue.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/jobs/email.worker.ts"))).toBe(true);
+
+    // Check DB files when auth is none
+    expect(await fileExists(join(tempDir, "src/db/schema/index.ts"))).toBe(true);
+    expect(await fileExists(join(tempDir, "src/db/models"))).toBe(false);
+    expect(await fileExists(join(tempDir, "src/db/schema/sessions.ts"))).toBe(false);
+    expect(await fileExists(join(tempDir, "src/db/schema/audit.ts"))).toBe(false);
+    expect(await fileExists(join(tempDir, "src/db/schema/otp.ts"))).toBe(false);
+
+    const pkg = await readPackageJson(tempDir);
+    expect(pkg.dependencies?.["bullmq"]).toBeDefined();
+    expect(pkg.scripts?.["worker"]).toBeDefined();
+    expect(pkg.scripts?.["worker"]).toContain("src/jobs/email.worker.ts");
+  });
+
   it("should scaffold a Cloudflare Workers stack", async () => {
     await runInstallers({
       options: {
@@ -223,6 +288,7 @@ describe("End-to-End Scaffolding Pipeline", () => {
         email: "none",
         storage: "none",
         payments: "none",
+        queue: "none",
         qstash: false,
         linter: "none",
         git: false,
@@ -258,6 +324,7 @@ describe("End-to-End Scaffolding Pipeline", () => {
         email: "none",
         storage: "s3",
         payments: "none",
+        queue: "none",
         qstash: false,
         linter: "none",
         git: false,
@@ -278,4 +345,104 @@ describe("End-to-End Scaffolding Pipeline", () => {
     expect(pkg.dependencies?.["@aws-sdk/client-s3"]).toBeDefined();
     expect(pkg.dependencies?.["@aws-sdk/s3-request-presigner"]).toBeDefined();
   });
+
+  it("should swap email-templates.ts to BullMQ when queue is bullmq", async () => {
+    await runInstallers({
+      options: {
+        projectName: "bullmq-email-app",
+        projectDir: tempDir,
+        runtime: "bun",
+        db: "none",
+        auth: "better-auth",
+        firebaseAuth: false,
+        redis: "ioredis",
+        observability: "none",
+        docs: "none",
+        email: "resend",
+        storage: "none",
+        payments: "none",
+        queue: "bullmq",
+        qstash: false,
+        linter: "none",
+        git: false,
+        installDeps: false,
+        packageManager: "bun",
+      },
+      templateRoot,
+      projectDir: tempDir,
+    });
+
+    const emailTemplatesContent = await readFileSafe(
+      join(tempDir, "src/integrations/email/email-templates.ts")
+    );
+    expect(emailTemplatesContent).toContain('import { queueEmailJob } from "../../queues/email.queue.js";');
+    expect(emailTemplatesContent).toContain("return queueEmailJob({ to, subject, html, text });");
+  });
+
+  it("should swap email-templates.ts to QStash when queue is qstash", async () => {
+    await runInstallers({
+      options: {
+        projectName: "qstash-email-app",
+        projectDir: tempDir,
+        runtime: "bun",
+        db: "none",
+        auth: "better-auth",
+        firebaseAuth: false,
+        redis: "none",
+        observability: "none",
+        docs: "none",
+        email: "nodemailer",
+        storage: "none",
+        payments: "none",
+        queue: "qstash",
+        qstash: true,
+        linter: "none",
+        git: false,
+        installDeps: false,
+        packageManager: "bun",
+      },
+      templateRoot,
+      projectDir: tempDir,
+    });
+
+    const emailTemplatesContent = await readFileSafe(
+      join(tempDir, "src/integrations/email/email-templates.ts")
+    );
+    expect(emailTemplatesContent).toContain('import { publishSendEmail } from "../qstash.js";');
+    expect(emailTemplatesContent).toContain("return publishSendEmail({ to, subject, html, text });");
+  });
+
+  it("should use direct sendEmail in email-templates.ts when queue is none", async () => {
+    await runInstallers({
+      options: {
+        projectName: "direct-email-app",
+        projectDir: tempDir,
+        runtime: "bun",
+        db: "none",
+        auth: "better-auth",
+        firebaseAuth: false,
+        redis: "none",
+        observability: "none",
+        docs: "none",
+        email: "resend",
+        storage: "none",
+        payments: "none",
+        queue: "none",
+        qstash: false,
+        linter: "none",
+        git: false,
+        installDeps: false,
+        packageManager: "bun",
+      },
+      templateRoot,
+      projectDir: tempDir,
+    });
+
+    const emailTemplatesContent = await readFileSafe(
+      join(tempDir, "src/integrations/email/email-templates.ts")
+    );
+    expect(emailTemplatesContent).toContain('import { sendEmail } from "./email.js";');
+    expect(emailTemplatesContent).toContain("return sendEmail({ to, subject, html, text });");
+  });
 });
+

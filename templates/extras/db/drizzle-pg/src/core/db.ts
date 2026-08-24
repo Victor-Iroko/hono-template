@@ -1,10 +1,8 @@
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as models from "../db/models/index.js";
-import { relations } from "../db/relations.js";
+import * as schema from "../db/schema/index.js";
 import { getEnv } from "./env-validation.js";
 
-export const schema = { ...models, ...relations };
 export type Database = PostgresJsDatabase<typeof schema>;
 export type DatabaseInstance = Database;
 export type DrizzleTx = Parameters<Parameters<Database["transaction"]>[0]>[0];

@@ -26,6 +26,7 @@ describe("Custom JWT Stateful Opaque Refresh Token System", () => {
         email: "none",
         storage: "none",
         payments: "none",
+        queue: "none",
         qstash: false,
         linter: "none",
         git: false,
@@ -207,4 +208,107 @@ describe("Custom JWT Stateful Opaque Refresh Token System", () => {
     expect(getSessionByRefreshToken(s1.tokens.refreshToken)).toBeUndefined();
     expect(getSessionByRefreshToken(s2.tokens.refreshToken)).toBeUndefined();
   });
+
+  it("should generate 6-digit numeric OTP, enforce verification before login, and allow login after verification", async () => {
+    const { registerUser, loginUser, verifyUserEmailOtp, resendUserEmailOtp } = await import(
+      join(tempDir, "src/api/v1/auth/service.ts")
+    );
+    const { isEmailVerified } = await import(
+      join(tempDir, "src/api/v1/auth/otp.ts")
+    );
+
+    const email = "newuser@example.com";
+    const password = "password123";
+
+    // 1. Register new user
+    const regResult = await registerUser({ email, password, name: "New User" });
+    expect(regResult.email).toBe(email);
+    expect(regResult.expiresAt).toBeDefined();
+    expect(isEmailVerified(email)).toBe(false);
+
+    // 2. Attempting to log in before verification must fail
+    expect(loginUser({ email, password })).rejects.toThrow("Email not verified");
+
+    // 3. Resend OTP should succeed
+    const resendResult = await resendUserEmailOtp({ email });
+    expect(resendResult.success).toBe(true);
+
+    // 4. Verification with invalid OTP must fail
+    expect(verifyUserEmailOtp({ email, otp: "000000" })).rejects.toThrow();
+
+    // 5. Simulate valid OTP creation and verification
+    const { createEmailOtp } = await import(join(tempDir, "src/api/v1/auth/otp.ts"));
+    const { otp } = await createEmailOtp(email, "email-verification");
+    expect(otp).toHaveLength(6);
+
+    const verifyResult = await verifyUserEmailOtp({ email, otp });
+    expect(verifyResult.tokens.accessToken).toBeDefined();
+    expect(verifyResult.user.emailVerified).toBe(true);
+    expect(isEmailVerified(email)).toBe(true);
+
+    // 6. Login now succeeds
+    const loginResult = await loginUser({ email, password });
+    expect(loginResult.tokens.accessToken).toBeDefined();
+    expect(loginResult.user.email).toBe(email);
+  });
+
+  it("should support forgot password OTP flow to reset password", async () => {
+    const { requestForgotPasswordOtp, resetPasswordWithOtp } = await import(
+      join(tempDir, "src/api/v1/auth/service.ts")
+    );
+    const { createEmailOtp } = await import(join(tempDir, "src/api/v1/auth/otp.ts"));
+
+    const email = "demo@example.com";
+    const reqResult = await requestForgotPasswordOtp({ email });
+    expect(reqResult.success).toBe(true);
+    expect(reqResult.expiresAt).toBeDefined();
+
+    // Verify with invalid OTP fails
+    expect(
+      resetPasswordWithOtp({ email, otp: "999999", newPassword: "newpassword123" })
+    ).rejects.toThrow();
+
+    // Create valid password-reset OTP and reset password
+    const { otp } = await createEmailOtp(email, "password-reset");
+    const resetResult = await resetPasswordWithOtp({
+      email,
+      otp,
+      newPassword: "brandNewPassword123",
+    });
+    expect(resetResult.success).toBe(true);
+  });
+
+  it("should support authenticated change password OTP flow", async () => {
+    const { requestPasswordChangeOtp, changePasswordWithOtp } = await import(
+      join(tempDir, "src/api/v1/auth/service.ts")
+    );
+    const { createEmailOtp } = await import(join(tempDir, "src/api/v1/auth/otp.ts"));
+
+    const userId = "demo-user-id-12345";
+    const email = "demo@example.com";
+
+    const reqResult = await requestPasswordChangeOtp(email, userId);
+    expect(reqResult.success).toBe(true);
+    expect(reqResult.expiresAt).toBeDefined();
+
+    // Attempt with invalid OTP fails
+    expect(
+      changePasswordWithOtp(userId, email, {
+        currentPassword: "oldpassword123",
+        newPassword: "newpassword123",
+        otp: "000000",
+      })
+    ).rejects.toThrow();
+
+    // Create valid password-change OTP and update password
+    const { otp } = await createEmailOtp(email, "password-change");
+    const changeResult = await changePasswordWithOtp(userId, email, {
+      currentPassword: "oldpassword123",
+      newPassword: "newpassword123",
+      otp,
+    });
+    expect(changeResult.success).toBe(true);
+  });
 });
+
+

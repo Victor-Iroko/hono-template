@@ -6,7 +6,9 @@ import { appendEnvVars } from "../utils/env.js";
 import { injectAtMarker } from "../utils/injector.js";
 
 export async function installIntegrations(ctx: InstallerContext): Promise<void> {
-  const { payments, firebaseAuth, qstash, auth } = ctx.options;
+  const { payments, firebaseAuth, queue, qstash, auth, runtime } = ctx.options;
+  const isQStash = queue === "qstash" || (queue === undefined && qstash);
+  const isBullMQ = queue === "bullmq";
 
   // 1. Paystack Payments Integration
   if (payments === "paystack") {
@@ -125,8 +127,42 @@ authRouter.post("/google", async (c) => {
     }
   }
 
-  // 3. Upstash QStash Background Queues
-  if (qstash) {
+  // 3. BullMQ Background Queues
+  if (isBullMQ) {
+    const bullmqDir = join(ctx.templateRoot, "extras", "integrations", "bullmq");
+    await copyTemplateDir(bullmqDir, ctx.projectDir);
+
+    const runner = runtime === "bun" ? "bun" : "tsx";
+
+    await mergePackageJson(ctx.projectDir, {
+      dependencies: {
+        bullmq: "^5.41.0",
+      },
+      scripts: {
+        worker: `${runner} src/jobs/email.worker.ts`,
+      },
+    });
+
+    await appendEnvVars(ctx.projectDir, {
+      env: {
+        REDIS_URL: "redis://localhost:6379",
+      },
+      example: {
+        REDIS_URL: "redis://localhost:6379",
+      },
+      comments: ["BullMQ Queue Redis Configuration"],
+    });
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/core/env-schema.ts",
+      "// [INSTALLER:ENV_SCHEMA]",
+      `  REDIS_URL: z.string().default("redis://localhost:6379"),`
+    );
+  }
+
+  // 4. Upstash QStash Background Queues
+  if (isQStash) {
     const qstashDir = join(ctx.templateRoot, "extras", "integrations", "qstash");
     await copyTemplateDir(qstashDir, ctx.projectDir);
 
@@ -138,21 +174,42 @@ authRouter.post("/google", async (c) => {
 
     await appendEnvVars(ctx.projectDir, {
       env: {
+        DEPLOYMENT_URL: "http://localhost:3000",
         QSTASH_TOKEN: "mock_qstash_token",
+        QSTASH_CURRENT_SIGNING_KEY: "mock_qstash_current_signing_key",
+        QSTASH_NEXT_SIGNING_KEY: "mock_qstash_next_signing_key",
       },
       example: {
+        DEPLOYMENT_URL: "https://api.yourdomain.com",
         QSTASH_TOKEN: "your_upstash_qstash_token",
+        QSTASH_CURRENT_SIGNING_KEY: "your_qstash_current_signing_key",
+        QSTASH_NEXT_SIGNING_KEY: "your_qstash_next_signing_key",
       },
-      comments: ["Upstash QStash Background Queues"],
+      comments: ["Upstash QStash Background Queues & Webhook Receiver"],
     });
 
     await injectAtMarker(
       ctx.projectDir,
       "src/core/env-schema.ts",
       "// [INSTALLER:ENV_SCHEMA]",
-      `  QSTASH_TOKEN: z.string(),
+      `  DEPLOYMENT_URL: z.string().optional(),
+  QSTASH_TOKEN: z.string(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),`
+    );
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/api/v1/router.ts",
+      "// [INSTALLER:V1_IMPORTS]",
+      'import { jobsRouter } from "./jobs/router.js";'
+    );
+
+    await injectAtMarker(
+      ctx.projectDir,
+      "src/api/v1/router.ts",
+      "// [INSTALLER:V1_ROUTES]",
+      'v1Router.route("/jobs", jobsRouter);'
     );
   }
 }

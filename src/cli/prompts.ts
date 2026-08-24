@@ -13,6 +13,7 @@ import type {
   EmailChoice,
   StorageChoice,
   PaymentChoice,
+  QueueChoice,
   LinterChoice,
   PackageManagerChoice,
 } from "./types.js";
@@ -191,14 +192,19 @@ export async function promptProjectOptions(
     payments = handleCancel(payPrompt);
   }
 
-  // Upstash QStash Background Queues
-  let qstash = flags?.qstash ?? false;
-  if (flags?.qstash === undefined && !flags?.nonInteractive) {
-    const qstashPrompt = await p.confirm({
-      message: "Include Upstash QStash for background jobs & event publishing?",
-      initialValue: false,
+  // Background Job Queues (BullMQ / QStash)
+  let queue: QueueChoice = flags?.queue ?? (flags?.bullmq ? "bullmq" : flags?.qstash ? "qstash" : "none");
+  if (!flags?.queue && flags?.bullmq === undefined && flags?.qstash === undefined && !flags?.nonInteractive) {
+    const queuePrompt = await p.select<QueueChoice>({
+      message: "Select background queue & job processor:",
+      initialValue: "none",
+      options: [
+        { value: "bullmq", label: "BullMQ (Redis-backed Queue & Worker)", hint: "Requires Redis connection" },
+        { value: "qstash", label: "Upstash QStash (Serverless HTTP / Event publishing)", hint: "HTTP-based serverless queue" },
+        { value: "none", label: "None", hint: "Direct synchronous execution" },
+      ],
     });
-    qstash = handleCancel(qstashPrompt);
+    queue = handleCancel(queuePrompt);
   }
 
   // Tooling & Linters
@@ -253,10 +259,12 @@ export async function promptProjectOptions(
     email,
     storage,
     payments,
-    qstash,
+    queue,
+    qstash: queue === "qstash",
     linter,
     git,
     installDeps,
     packageManager,
   };
 }
+
